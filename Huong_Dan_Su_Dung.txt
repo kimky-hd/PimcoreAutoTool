@@ -1,0 +1,87 @@
+================================================================================
+                    PIMCORE AUTO TOOL - ENTERPRISE v2.0
+     HỆ THỐNG TỰ ĐỘNG HÓA DỮ LIỆU GOOGLE DOCS -> PIMCORE CMS -> WEB APP SCRIPT
+================================================================================
+
+Kính gửi Quý Khách hàng,
+
+Đây là phiên bản đóng gói độc lập của phần mềm Pimcore Auto Tool (v2.0).
+Phần mềm hỗ trợ chạy trên cả hai hệ điều hành phổ biến: WINDOWS và macOS (cũng như Linux).
+
+
+================================================================================
+I. YÊU CẦU HỆ THỐNG
+================================================================================
+1. Java Runtime Environment (JRE) hoặc JDK 17 trở lên:
+   - Tải miễn phí tại trang chủ chính thức Eclipse Temurin (khuyên dùng):
+     https://adoptium.net/temurin/releases/?version=17
+   - Hoặc Oracle Java: https://www.oracle.com/java/technologies/downloads/#java17
+
+2. Trình duyệt Google Chrome (bản mới nhất).
+
+
+================================================================================
+II. HƯỚNG DẪN KHỞI CHẠY
+================================================================================
+
+--------------------------------------------------------------------------------
+A. DÀNH CHO NGƯỜI DÙNG WINDOWS:
+--------------------------------------------------------------------------------
+1. Nhấp đúp chuột vào file:
+      Chay_Tool_Windows.bat
+   (File sẽ tự động kiểm tra Java và mở giao diện ứng dụng).
+
+2. Trên giao diện tool:
+   - Bấm nút: "1. Mở Chrome Debug" (Chrome sẽ mở ở chế độ kết nối cổng 9222).
+   - Đăng nhập vào Pimcore Admin và mở sẵn trang Web App Script trên trình duyệt đó.
+   - Dán danh sách các đường link Google Docs cần đồng bộ vào ô nhập (hỗ trợ từ 1 đến 10 link, mỗi dòng 1 link).
+   - Bấm nút: "2. Bắt đầu chạy (Start)".
+
+--------------------------------------------------------------------------------
+B. DÀNH CHO NGƯỜI DÙNG macOS:
+--------------------------------------------------------------------------------
+1. Nhấp đúp chuột vào file:
+      Chay_Tool_Mac.command
+
+   (*) Lưu ý lần đầu trên macOS:
+   Nếu macOS thông báo file chưa có quyền thực thi hoặc bị chặn bảo mật:
+   - Mở Terminal, gõ lệnh cấp quyền thực thi (chỉ cần làm 1 lần duy nhất):
+        chmod +x Chay_Tool_Mac.command
+   - Sau đó nhấp đúp vào Chay_Tool_Mac.command là tool sẽ mở ngay!
+
+2. Thao tác trên giao diện tương tự như trên Windows. Tool đã được tối ưu hóa phím tắt (Command thay vì Ctrl) hoàn toàn tự động.
+
+
+================================================================================
+III. CÁC TÍNH NĂNG VÀ TÙY CHỌN NỔI BẬT TRÊN TOOL
+================================================================================
+1. [Tạo thẻ 'html' trong Google Doc]:
+   - Tool tự động quay lại từng file Google Doc của bạn, tạo một thẻ tài liệu mới
+     có tên là "html" (nếu đã có thẻ thì ghi đè cập nhật).
+   - Dán toàn bộ mã HTML đã được chuẩn hóa vào thẻ "html" này để bạn lưu trữ trực tiếp.
+
+2. [Dán vào App Script]:
+   - Tùy chọn dán mã HTML vào mục "sửa source" của trang Web App Script.
+   - Bạn có thể bỏ tích tùy chọn này nếu chỉ có nhu cầu lưu code vào Google Doc và xuất file.
+
+3. [Tab HTML Đã Chuẩn Hóa]:
+   - Trên giao diện có riêng tab "📋 HTML Đã Chuẩn Hóa" cho phép xem trước toàn bộ
+     code HTML của từng bài và nút "Copy HTML bài này" chỉ với 1 click.
+   - Tất cả các bài đều tự động được xuất ra thư mục "output_html/" để không bao giờ bị mất code.
+
+4. [Thay đổi Logo / Thương hiệu riêng]:
+   - Nếu bạn muốn đổi logo sang logo công ty của mình:
+     Chỉ cần đặt file ảnh logo của bạn tên là "logo.png" vào cùng thư mục với file "PimcoreAutoTool.jar".
+     Tool sẽ tự động nhận diện và hiển thị logo của bạn trên toàn bộ giao diện và thanh Taskbar/Dock!
+
+5. [Tùy chỉnh Selectors linh hoạt]:
+   - Nếu giao diện Pimcore hoặc App Script có thay đổi cấu trúc web trong tương lai,
+     bạn có thể mở file "selectors.properties" để điều chỉnh XPath/CSS mà không cần build lại tool.
+
+
+================================================================================
+IV. HỖ TRỢ KỸ THUẬT & LIÊN HỆ
+================================================================================
+Nếu gặp bất kỳ vướng mắc nào trong quá trình vận hành, vui lòng liên hệ nhóm phát triển
+để được hỗ trợ nhanh chóng nhất. Chúc Quý Khách hàng vận hành công việc hiệu quả!
+

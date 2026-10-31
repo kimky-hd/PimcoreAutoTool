@@ -1,5 +1,7 @@
 package com.automation;
 
+import java.nio.file.Path;
+
 /** Kênh báo cáo từ luồng automation lên giao diện. */
 public interface FlowListener {
 
@@ -14,5 +16,7 @@ public interface FlowListener {
 
     /** Kết thúc lượt chạy. */
     void onFinished(boolean success, String summary);
-}
 
+    /** Báo cáo bài viết đã có HTML chuẩn hóa và file đã lưu vào output_html/. */
+    void onArticleHtmlReady(int articleNo, int totalArticles, String docId, String title, String cleanHtml, Path savedFilePath);
+}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Web App Script (Mock Test)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 0; background: #f8fafc; }
+    .header { background: #1e293b; color: white; padding: 12px 20px; font-weight: bold; }
+    .container { display: flex; height: calc(100vh - 50px); }
+    .sidebar { width: 220px; background: #ffffff; border-right: 1px solid #e2e8f0; padding: 15px 0; }
+    .nav-item { display: block; padding: 10px 20px; color: #334155; text-decoration: none; font-size: 14px; cursor: pointer; }
+    .nav-item:hover, .nav-item.active { background: #eff6ff; color: #2563eb; font-weight: bold; }
+    .content { flex: 1; padding: 20px; }
+    textarea { width: 100%; height: 450px; font-family: Consolas, monospace; font-size: 13px; padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; background: #fff; }
+    .btn-save { background: #2563eb; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+    .badge { display: inline-block; padding: 2px 8px; font-size: 11px; background: #22c55e; color: white; border-radius: 999px; margin-left: 6px; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    Web App Script Editor <span class="badge">Mock Test</span>
+  </div>
+
+  <div class="container">
+    <div class="sidebar">
+      <a class="nav-item" href="javascript:void(0)">trang chủ</a>
+      <a class="nav-item" href="javascript:void(0)">quản lý bài</a>
+      <!-- Mục selector: appscript.menuEditSource -->
+      <a class="nav-item active" href="javascript:void(0)" onclick="openSource()">sửa source</a>
+      <a class="nav-item" href="javascript:void(0)">cài đặt</a>
+    </div>
+
+    <div class="content">
+      <h3>Mục: Sửa Source HTML</h3>
+      <p style="color: #64748b; font-size: 13px;">Tool RPA sẽ tự động click vào menu "sửa source" bên trái, xóa nội dung cũ và dán toàn bộ mã HTML đã được chuẩn hóa vào ô bên dưới:</p>
+      
+      <!-- Ô selector: appscript.sourceEditor -->
+      <textarea id="sourceEditor" placeholder="Mã HTML sau khi chuẩn hóa sẽ được tool paste vào đây..."></textarea>
+      <br/>
+      <button class="btn-save" onclick="console.log('Đã lưu bài viết!')">Lưu bài viết</button>
+    </div>
+  </div>
+
+  <script>
+    function openSource() {
+      console.log('Đã click menu sửa source');
+      document.getElementById('sourceEditor').focus();
+    }
+  </script>
+</body>
+</html>
+

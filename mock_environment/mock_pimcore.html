@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Pimcore Admin (Mock Test)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 15px; background: #eef2f5; }
+    h1 { font-size: 18px; margin-top: 0; color: #1a365d; }
+    .layout { display: flex; gap: 15px; }
+    .sidebar { width: 220px; background: white; padding: 10px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .main-panel { flex: 1; background: white; padding: 15px; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .tree-node { padding: 6px 10px; background: #f0f7ff; border: 1px dashed #0066cc; cursor: context-menu; display: inline-block; font-weight: bold; border-radius: 4px; }
+    .x-menu { background: #ffffff; border: 1px solid #ccc; box-shadow: 2px 2px 8px rgba(0,0,0,0.15); padding: 4px 0; min-width: 140px; border-radius: 4px; z-index: 9999; }
+    .x-menu-item-text { display: block; padding: 6px 12px; cursor: pointer; color: #333; }
+    .x-menu-item-text:hover { background: #e6f0fa; color: #0066cc; }
+    .tab-bar { display: flex; gap: 8px; border-bottom: 2px solid #ddd; margin-bottom: 12px; padding-bottom: 4px; }
+    .x-tab-inner { cursor: pointer; padding: 6px 14px; background: #eee; border-radius: 4px 4px 0 0; font-weight: 500; }
+    .x-tab-inner.active { background: #0066cc; color: white; }
+    .form-group { margin-bottom: 10px; }
+    .x-form-item-label { display: block; font-weight: bold; margin-bottom: 4px; font-size: 13px; }
+    input[type="text"], textarea { width: 100%; max-width: 500px; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    .combo-wrapper { position: relative; max-width: 500px; }
+    .x-form-trigger { position: absolute; right: 0; top: 0; width: 30px; height: 32px; background: #e2e8f0; border-left: 1px solid #ccc; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 0 4px 4px 0; }
+    .x-boundlist { list-style: none; margin: 0; padding: 0; border: 1px solid #ccc; background: white; max-width: 500px; }
+    .x-boundlist-item { padding: 6px 10px; cursor: pointer; }
+    .x-boundlist-item:hover { background: #e6f0fa; }
+    .x-btn-inner { background: #0066cc; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-weight: bold; display: inline-block; }
+    .x-btn-inner:hover { background: #004c99; }
+    .cke_toolbar { background: #f8fafc; border: 1px solid #cbd5e1; border-bottom: none; padding: 6px; border-radius: 4px 4px 0 0; }
+    .cke_button__source { display: inline-block; padding: 4px 8px; background: #e2e8f0; border: 1px solid #94a3b8; border-radius: 3px; cursor: pointer; font-size: 12px; text-decoration: none; color: #0f172a; }
+    .cke_editable { border: 1px solid #cbd5e1; min-height: 80px; padding: 8px; border-radius: 0 0 4px 4px; background: #fff; }
+    .cke_source { border: 1px solid #94a3b8; font-family: monospace; font-size: 12px; padding: 8px; }
+    .pimcore_main_tabpanel { margin-bottom: 15px; }
+    .x-tab-active { display: inline-flex; align-items: center; gap: 8px; background: #e0f2fe; border: 1px solid #7dd3fc; padding: 4px 10px; border-radius: 4px; list-style: none; }
+    .x-tab-close-btn { color: #dc2626; text-decoration: none; font-weight: bold; font-size: 14px; }
+  </style>
+</head>
+<body>
+
+  <h1>Pimcore CMS - MOCK TEST PAGE CHO TOOL RPA</h1>
+  <p style="color: #64748b; font-size: 13px;">Trang web này giả lập đầy đủ cấu trúc DOM, XPath và Class của Pimcore để bạn test trực tiếp Selenium mà không cần cài Pimcore.</p>
+
+  <div class="layout">
+    <!-- Sidebar Cây Thư mục -->
+    <div class="sidebar">
+      <h3>Data Objects</h3>
+      <div id="pimcore_panel_tree_objects">
+        <span class="x-tree-node-text tree-node" id="tree-folder" oncontextmenu="openContextMenu(event)">2025</span>
+      </div>
+
+      <!-- Menu ngữ cảnh chuột phải -->
+      <div id="context-menu" class="x-menu" style="display:none; position:fixed;">
+        <span class="x-menu-item-text" onclick="showNewsMenu()">Add Object</span>
+        <div id="sub-menu" style="display:block; border-top: 1px solid #eee;">
+          <span class="x-menu-item-text" style="padding-left: 20px; font-weight:bold;" onclick="createNewsObject()">News</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Panel -->
+    <div class="main-panel">
+      <!-- Thanh tab chính (Object Tab) có nút đóng [x] -->
+      <div class="pimcore_main_tabpanel" id="mainTabPanel">
+        <li class="x-tab-active" id="activeObjectTab">
+          <span>Bài viết: [News Object Mới]</span>
+          <a class="x-tab-close-btn" href="javascript:void(0)" onclick="closeObjectTab()" title="Đóng tab này">×</a>
+        </li>
+      </div>
+
+      <!-- Tab header: Base | SEO | Sync data Google doc -->
+      <div class="tab-bar">
+        <span class="x-tab-inner active" id="tabBtnBase" onclick="switchMainTab('base')">Base</span>
+        <span class="x-tab-inner" id="tabBtnSeo" onclick="switchMainTab('seo')">SEO</span>
+        <span class="x-tab-inner" id="tabBtnSync" onclick="switchMainTab('sync')">Sync data Google doc</span>
+      </div>
+
+      <!-- Tab Base Content -->
+      <div id="tabContentBase">
+        <div class="form-group">
+          <label class="x-form-item-label">Tiêu đề</label>
+          <div><input type="text" id="txtTitle" placeholder="Tiêu đề bài viết sẽ được paste vào đây..." /></div>
+        </div>
+
+        <div class="form-group">
+          <label class="x-form-item-label">Thời gian</label>
+          <div><input type="text" id="txtDate" placeholder="dd/MM/yyyy" value="01/01/2025" /></div>
+        </div>
+
+        <div class="form-group">
+          <label class="x-form-item-label">Ngôn ngữ hiển thị</label>
+          <div class="combo-wrapper">
+            <input type="text" id="txtLanguage" readonly value="Vietnamese" />
+            <div class="x-form-trigger" onclick="toggleDropdown('langList')">▼</div>
+            <ul id="langList" class="x-boundlist" style="display:none;">
+              <li class="x-boundlist-item" onclick="selectItem('txtLanguage', 'Vietnamese', 'langList')">Vietnamese</li>
+              <li class="x-boundlist-item" onclick="selectItem('txtLanguage', 'English', 'langList')">English</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="x-form-item-label">Access Channel</label>
+          <div class="combo-wrapper">
+            <input type="text" id="txtChannel" readonly value="Web" />
+            <div class="x-form-trigger" onclick="toggleDropdown('channelList')">▼</div>
+            <ul id="channelList" class="x-boundlist" style="display:none;">
+              <li class="x-boundlist-item" onclick="selectItem('txtChannel', 'Web', 'channelList')">Web</li>
+              <li class="x-boundlist-item" onclick="selectItem('txtChannel', 'App', 'channelList')">App</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab SEO Content -->
+      <div id="tabContentSeo" style="display:none;">
+        <div class="form-group">
+          <label class="x-form-item-label">SEO Title</label>
+          <div><input type="text" id="txtSeoTitle" placeholder="SEO Title sẽ được paste vào đây..." /></div>
+        </div>
+      </div>
+
+      <!-- Tab Sync data Google doc Content -->
+      <div id="tabContentSync" style="display:none;">
+        <div class="form-group">
+          <label class="x-form-item-label">ID Google doc</label>
+          <div><input type="text" id="txtSyncDocId" placeholder="ID bài viết..." /></div>
+        </div>
+        <button type="button" class="x-btn-inner" onclick="simulateSync()"><span class="x-btn-inner">Gửi</span></button>
+        <span id="syncStatus" style="margin-left: 10px; color: green; font-weight: bold;"></span>
+      </div>
+
+      <!-- Trình soạn thảo CKEditor / TinyMCE giả lập (luôn hiển thị phía dưới để Bước 17 tìm thấy) -->
+      <div class="form-group" style="margin-top: 15px;">
+        <label class="x-form-item-label">Nội dung bài viết (CKEditor Mock)</label>
+        <div class="cke_toolbar">
+          <a class="cke_button__source" href="javascript:void(0)" onclick="toggleSource()">Source</a>
+        </div>
+        <div class="cke_editable" contenteditable="true" id="editorContent">
+          Nhấp chuột vào đây để soạn thảo nội dung...
+        </div>
+        <textarea class="cke_source" id="editorSource" style="display:none; width:100%; height:140px; margin-top: 6px;"><h2></strong><strong>Tiêu đề giả lập từ Pimcore Sync</strong></h2>
+<p dir="ltr" id="doc-test" class="c5"><span style="font-weight:700">Pimcore</span> là nền tảng quản trị nội dung mạnh mẽ. Dưới đây là ví dụ về <span style="font-style:italic">tính năng</span> nổi bật.</p>
+<p><img src="https://cdn.example.com/images/architecture.png" style="width:100%" /></p>
+<p><em>(Nguồn: Tài liệu kỹ thuật Pimcore)</em></p>
+<h3><span style="font-size:14pt"><strong>2. Chi tiết cấu hình</strong></span></h3>
+<p>Đoạn văn này có chứa <strong>từ khóa quan trọng</strong> và <a href="https://example.com" target="_blank" class="link-item">đường liên kết</a>.</p></textarea>
+      </div>
+
+      <!-- Nút Save & Publish ở dưới cùng -->
+      <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #e2e8f0;">
+        <button type="button" class="x-btn-inner" onclick="simulateSave()"><span class="x-btn-inner">Save & Publish</span></button>
+        <span id="saveStatus" style="margin-left: 10px; color: #0284c7; font-weight: bold;"></span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openContextMenu(e) {
+      e.preventDefault();
+      const menu = document.getElementById('context-menu');
+      menu.style.display = 'block';
+      menu.style.left = e.clientX + 'px';
+      menu.style.top = e.clientY + 'px';
+    }
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#context-menu') && e.target.id !== 'tree-folder') {
+        document.getElementById('context-menu').style.display = 'none';
+      }
+    });
+
+    function showNewsMenu() {
+      // Giữ menu mở để Selenium click News
+    }
+
+    function createNewsObject() {
+      document.getElementById('context-menu').style.display = 'none';
+      document.getElementById('activeObjectTab').style.display = 'inline-flex';
+      console.log('Đã tạo Object News mới thành công!');
+    }
+
+    function switchMainTab(tab) {
+      document.getElementById('tabContentBase').style.display = tab === 'base' ? 'block' : 'none';
+      document.getElementById('tabContentSeo').style.display = tab === 'seo' ? 'block' : 'none';
+      document.getElementById('tabContentSync').style.display = tab === 'sync' ? 'block' : 'none';
+
+      document.getElementById('tabBtnBase').className = 'x-tab-inner' + (tab === 'base' ? ' active' : '');
+      document.getElementById('tabBtnSeo').className = 'x-tab-inner' + (tab === 'seo' ? ' active' : '');
+      document.getElementById('tabBtnSync').className = 'x-tab-inner' + (tab === 'sync' ? ' active' : '');
+    }
+
+    function toggleDropdown(id) {
+      const el = document.getElementById(id);
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function selectItem(inputId, val, listId) {
+      document.getElementById(inputId).value = val;
+      document.getElementById(listId).style.display = 'none';
+    }
+
+    function toggleSource() {
+      const src = document.getElementById('editorSource');
+      const editable = document.getElementById('editorContent');
+      if (src.style.display === 'none' || src.style.display === '') {
+        src.style.display = 'block';
+        if (editable) editable.style.display = 'none';
+      } else {
+        src.style.display = 'none';
+        if (editable) editable.style.display = 'block';
+      }
+    }
+
+    function simulateSave() {
+      const st = document.getElementById('saveStatus');
+      st.innerText = 'Đã lưu thành công (Saved successfully)';
+      setTimeout(() => st.innerText = '', 3000);
+    }
+
+    function simulateSync() {
+      const docId = document.getElementById('txtSyncDocId').value || '14adu1rgUbv6ByS4xVKFSYoAG1LU3ge34rxjT-6sr1Mk';
+      const title = document.getElementById('txtTitle').value || 'Nhà ở chất lượng cao vùng ven có phải xu hướng an cư mới?';
+      const st = document.getElementById('syncStatus');
+      st.innerText = 'Đang đồng bộ Doc ID [' + docId + '] từ Google Doc...';
+
+      // Tạo mã HTML thô giả lập y như Pimcore kéo từ Google Doc về
+      const rawSample = '<h2></strong><strong>' + title + '</strong></h2>\n\n'
+        + '<p dir="ltr" id="doc-' + docId + '" class="c5"><span style="font-weight:700">Pimcore CMS</span> đã đồng bộ thành công nội dung bài viết từ Google Doc có ID: <em>' + docId + '</em>. Dưới đây là các luận điểm chính và nhận định từ các chuyên gia đầu ngành trong lĩnh vực phát triển hạ tầng và quy hoạch đô thị tương lai.</p>\n\n'
+        + '<p><img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1200" style="width:100%" /></p>\n\n'
+        + '<p><em>(Nguồn: Phân tích xu hướng thị trường bất động sản vùng ven năm 2026)</em></p>\n\n'
+        + '<h3><span style="font-size:14pt"><strong>2. Tiềm năng tăng trưởng và bài toán tài chính</strong></span></h3>\n\n'
+        + '<p>Đoạn văn này chứa các từ khóa quan trọng như <strong>chất lượng cuộc sống</strong>, không gian xanh, và <a href="https://example.com" target="_blank" class="link-item">hạ tầng kết nối đồng bộ</a> giữa các đô thị vệ tinh.</p>';
+
+      document.getElementById('editorSource').value = rawSample;
+      document.getElementById('editorContent').innerHTML = rawSample;
+
+      setTimeout(() => {
+        st.innerText = 'Đồng bộ Google Doc hoàn tất! Đã kéo toàn bộ nội dung về CMS.';
+        setTimeout(() => st.innerText = '', 6000);
+      }, 1000);
+    }
+
+    function closeObjectTab() {
+      document.getElementById('activeObjectTab').style.display = 'none';
+      console.log('Đã đóng tab Object trên Pimcore');
+    }
+  </script>
+</body>
+</html>

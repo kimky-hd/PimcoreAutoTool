@@ -1,0 +1,40 @@
+================================================================================
+            PIMCORE AUTO TOOL - ENTERPRISE v2.0 (macOS EDITION)
+================================================================================
+
+Kính gửi Quý Khách hàng,
+
+Đây là phiên bản dành riêng cho người dùng máy tính Apple Mac (macOS):
+Hỗ trợ cả chip Apple Silicon (M1, M2, M3, M4) và chip Intel.
+
+(*) KHÔNG CẦN CÀI ĐẶT JAVA THỦ CÔNG:
+    Tool đã tích hợp cơ chế tự động khởi tạo môi trường Java trong lần đầu mở!
+
+================================================================================
+HƯỚNG DẪN SỬ DỤNG 3 BƯỚC:
+================================================================================
+
+1. KHỞI ĐỘNG TOOL:
+   - Nhấp đúp chuột vào file:
+        Chay_Tool_Mac.command
+
+   (*) Lưu ý lần đầu trên macOS:
+   Nếu macOS hiển thị cảnh báo bảo mật hoặc chưa cấp quyền mở file:
+   - Mở ứng dụng Terminal trên Mac.
+   - Kéo file "Chay_Tool_Mac.command" vào cửa sổ Terminal và thêm lệnh cấp quyền:
+        chmod +x /đường_dẫn_tới/Chay_Tool_Mac.command
+     (Hoặc chỉ cần mở Terminal, gõ `chmod +x ` rồi kéo thả file này vào rồi ấn Enter).
+   - Sau đó chỉ cần nhấp đúp vào Chay_Tool_Mac.command là tool sẽ tự mở!
+
+2. MỞ TRÌNH DUYỆT CHROME ĐỒNG BỘ:
+   - Trên giao diện, bấm nút: "1. Mở Chrome Debug"
+   - Đăng nhập vào Pimcore Admin và mở sẵn tab Web App Script trên trình duyệt đó.
+
+3. NHẬP LINK VÀ CHẠY:
+   - Dán từ 1 đến 10 đường link Google Docs cần đồng bộ vào ô danh sách (mỗi dòng 1 link).
+   - Tùy chọn:
+     [X] Tạo thẻ 'html' trong Google Doc
+     [X] Dán vào App Script
+   - Bấm nút: "2. Bắt đầu chạy (Start)".
+
+Chúc Quý Khách hàng vận hành công việc hiệu quả và thuận lợi!

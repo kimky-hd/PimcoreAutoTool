@@ -13,17 +13,29 @@ import java.util.Locale;
 
 /**
  * Khởi chạy Chrome ở chế độ Remote Debugging (cổng 9222) với profile riêng
- * C:\ChromeAutomationProfile để Selenium kết nối vào và dùng lại các phiên đăng nhập.
+ * để Selenium kết nối vào và dùng lại các phiên đăng nhập.
+ * Hỗ trợ tự động nhận diện và chạy trên cả Windows, macOS và Linux.
  */
 public final class ChromeLauncher {
 
     public static final String HOST = "127.0.0.1";
     public static final int PORT = 9222;
     public static final String DEBUGGER_ADDRESS = HOST + ":" + PORT;
-    public static final String PROFILE_DIR = "C:\\ChromeAutomationProfile";
 
     private ChromeLauncher() {
     }
+
+    /** Trả về đường dẫn thư mục profile riêng cho Chrome Automation tuỳ theo hệ điều hành. */
+    public static String getProfileDir() {
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        if (os.contains("win")) {
+            return "C:\\ChromeAutomationProfile";
+        } else {
+            return Paths.get(System.getProperty("user.home"), "ChromeAutomationProfile").toString();
+        }
+    }
+
+    public static final String PROFILE_DIR = getProfileDir();
 
     /** Kiểm tra cổng 127.0.0.1:9222 đã mở (Chrome Debug đang chạy) hay chưa. */
     public static boolean isDebugPortOpen() {
@@ -35,7 +47,7 @@ public final class ChromeLauncher {
         }
     }
 
-    /** Tìm chrome.exe: ưu tiên đường dẫn cấu hình, sau đó các vị trí cài đặt mặc định. */
+    /** Tìm chrome: ưu tiên đường dẫn cấu hình, sau đó các vị trí cài đặt mặc định theo từng OS. */
     public static Path findChrome(String configuredPath) {
         List<String> candidates = new ArrayList<>();
         if (configuredPath != null && !configuredPath.isBlank()) {
@@ -59,10 +71,14 @@ public final class ChromeLauncher {
             }
         } else if (os.contains("mac")) {
             candidates.add("/Applications/Google Chrome.app/Contents/MacOS/Google Chrome");
+            String home = System.getProperty("user.home", "");
+            candidates.add(home + "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome");
         } else {
             candidates.add("/usr/bin/google-chrome");
             candidates.add("/usr/bin/google-chrome-stable");
             candidates.add("/usr/bin/chromium-browser");
+            candidates.add("/usr/bin/chromium");
+            candidates.add("/snap/bin/chromium");
         }
         for (String candidate : candidates) {
             Path p = Paths.get(candidate);
@@ -74,13 +90,13 @@ public final class ChromeLauncher {
     }
 
     /**
-     * Chạy lệnh:
-     * chrome.exe --remote-debugging-port=9222 --user-data-dir=C:\ChromeAutomationProfile [url...]
+     * Khởi chạy Chrome:
+     * chrome --remote-debugging-port=9222 --user-data-dir=[PROFILE_DIR] [url...]
      */
     public static Process launch(String configuredPath, List<String> startUrls) throws IOException {
         Path chrome = findChrome(configuredPath);
         if (chrome == null) {
-            throw new IOException("Không tìm thấy chrome.exe. Hãy điền 'chrome.path' trong selectors.properties");
+            throw new IOException("Không tìm thấy trình duyệt Google Chrome. Hãy điền 'chrome.path' trong selectors.properties");
         }
         File profile = new File(PROFILE_DIR);
         if (!profile.exists() && !profile.mkdirs()) {
@@ -105,11 +121,11 @@ public final class ChromeLauncher {
         return pb.start();
     }
 
-    /** Chuỗi lệnh dùng để hiển thị log. */
+    /** Chuỗi lệnh dùng để hiển thị log hoặc chạy thủ công. */
     public static String describeCommand(String configuredPath) {
         Path chrome = findChrome(configuredPath);
-        return "\"" + (chrome == null ? "chrome.exe" : chrome) + "\" --remote-debugging-port=" + PORT
-                + " --user-data-dir=" + PROFILE_DIR;
+        String exe = chrome == null ? (System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win") ? "chrome.exe" : "google-chrome") : chrome.toString();
+        return "\"" + exe + "\" --remote-debugging-port=" + PORT
+                + " --user-data-dir=\"" + PROFILE_DIR + "\"";
     }
 }
-

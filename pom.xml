@@ -15,11 +15,26 @@
     </properties>
 
     <dependencies>
-        <!-- Thư viện Selenium 4.25.0 điều khiển trình duyệt Chrome -->
+        <!-- Thư viện Selenium 4 điều khiển trình duyệt Chrome -->
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-java</artifactId>
             <version>4.25.0</version>
+        </dependency>
+
+        <!-- Thư viện Jsoup để chuẩn hóa HTML Template sạch sẽ -->
+        <dependency>
+            <groupId>org.jsoup</groupId>
+            <artifactId>jsoup</artifactId>
+            <version>1.18.1</version>
+        </dependency>
+
+        <!-- JUnit 5 cho Unit Test -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>5.10.2</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

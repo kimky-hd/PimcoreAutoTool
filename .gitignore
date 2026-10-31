@@ -37,3 +37,9 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### Project Runtime Artifacts ###
+logs/
+screenshots/
+output_html/
+selectors.properties

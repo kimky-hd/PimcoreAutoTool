@@ -1,0 +1,41 @@
+================================================================================
+          PIMCORE AUTO TOOL - ENTERPRISE v2.0 (WINDOWS PORTABLE)
+================================================================================
+
+Kính gửi Quý Khách hàng,
+
+Đây là phiên bản PORTABLE ĐẶC BIỆT dành riêng cho Windows:
+ĐÃ ĐƯỢC TÍCH HỢP SẴN MÁY ẢO JAVA (PORTABLE JRE).
+
+(*) BẠN HOÀN TOÀN KHÔNG CẦN CÀI ĐẶT JAVA, JDK HAY BẤT CỨ THỨ GÌ LÊN MÁY TÍNH!
+    Không cần quyền Administrator (Admin), tải về là sử dụng được ngay.
+
+================================================================================
+HƯỚNG DẪN SỬ DỤNG 3 BƯỚC:
+================================================================================
+
+1. KHỞI ĐỘNG TOOL:
+   - Nhấp đúp chuột vào file:
+        Chay_Tool_Windows.bat
+   - Giao diện tool sẽ xuất hiện ngay lập tức.
+
+2. MỞ TRÌNH DUYỆT CHROME ĐỒNG BỘ:
+   - Trên giao diện, bấm nút: "1. Mở Chrome Debug"
+   - Cửa sổ Google Chrome riêng biệt sẽ mở ra.
+   - Hãy đăng nhập vào trang Pimcore Admin và mở sẵn tab Web App Script trên trình duyệt đó.
+
+3. NHẬP LINK VÀ CHẠY:
+   - Dán 1 đến 10 đường link Google Docs cần đồng bộ vào ô danh sách (mỗi dòng 1 link).
+   - Tùy chọn:
+     [X] Tạo thẻ 'html' trong Google Doc: Tool sẽ tự động tạo thẻ tài liệu mới tên là 'html' trong file Google Doc và dán mã HTML chuẩn hóa vào đó.
+     [X] Dán vào App Script: Tùy chọn dán mã vào Web App Script (mục 'sửa source').
+   - Bấm nút: "2. Bắt đầu chạy (Start)".
+
+================================================================================
+LƯU Ý QUAN TRỌNG:
+================================================================================
+- Giữ nguyên thư mục "jre" nằm cùng chỗ với file "PimcoreAutoTool.jar".
+- Tất cả các bài viết sau khi chuẩn hóa sẽ tự động lưu dự phòng file .html tại thư mục "output_html/".
+- Nếu muốn đổi logo thương hiệu: Bạn chỉ cần chép đè file ảnh logo của bạn vào file "logo.png" trong thư mục này.
+
+Chúc Quý Khách hàng vận hành công việc hiệu quả và thuận lợi!

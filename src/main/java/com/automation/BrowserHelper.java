@@ -1,13 +1,16 @@
 package com.automation;
 
+import org.openqa.selenium.Alert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.InvalidSelectorException;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
+import org.openqa.selenium.NoAlertPresentException;
 import org.openqa.selenium.NoSuchWindowException;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.Rectangle;
 import org.openqa.selenium.StaleElementReferenceException;
+import org.openqa.selenium.UnhandledAlertException;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -53,6 +56,28 @@ public class BrowserHelper {
 
     public int defaultTimeout() {
         return sel.getInt("timing.defaultTimeoutSec", 20);
+    }
+
+    /**
+     * Tự động kiểm tra và xử lý hộp thoại Alert của trình duyệt (nếu có).
+     * @return nội dung của alert hoặc null nếu không có alert nào.
+     */
+    public String handleAlertIfPresent(boolean accept) {
+        try {
+            Alert alert = driver.switchTo().alert();
+            String text = alert.getText();
+            if (accept) {
+                alert.accept();
+            } else {
+                alert.dismiss();
+            }
+            log.accept("   [ALERT BROWSER] Đã tự động xử lý hộp thoại: \"" + text + "\"");
+            return text;
+        } catch (NoAlertPresentException | NullPointerException ignored) {
+            return null;
+        } catch (WebDriverException e) {
+            return null;
+        }
     }
 
     // =====================================================================
@@ -129,7 +154,19 @@ public class BrowserHelper {
         if (depth >= MAX_FRAME_DEPTH) {
             return null;
         }
-        List<WebElement> frames = driver.findElements(By.cssSelector("iframe, frame"));
+        List<WebElement> frames;
+        try {
+            frames = driver.findElements(By.cssSelector("iframe, frame"));
+        } catch (UnhandledAlertException e) {
+            handleAlertIfPresent(true);
+            try {
+                frames = driver.findElements(By.cssSelector("iframe, frame"));
+            } catch (WebDriverException ex) {
+                return null;
+            }
+        } catch (WebDriverException e) {
+            return null;
+        }
         for (WebElement frame : frames) {
             try {
                 if (!frame.isDisplayed()) {
@@ -162,8 +199,17 @@ public class BrowserHelper {
         List<WebElement> elements;
         try {
             elements = driver.findElements(by);
+        } catch (UnhandledAlertException e) {
+            handleAlertIfPresent(true);
+            try {
+                elements = driver.findElements(by);
+            } catch (WebDriverException ex) {
+                return null;
+            }
         } catch (InvalidSelectorException e) {
             throw new SelectorException(key, sel.resolve(key, placeholders), "cú pháp selector KHÔNG HỢP LỆ");
+        } catch (WebDriverException e) {
+            return null;
         }
         for (WebElement el : elements) {
             try {
@@ -275,13 +321,22 @@ public class BrowserHelper {
     }
 
     // =====================================================================
-    //  BÀN PHÍM
+    //  BÀN PHÍM & HỆ ĐIỀU HÀNH
     // =====================================================================
 
-    /** Nhấn tổ hợp Ctrl + phím vào phần tử đang được focus. */
+    public static final boolean IS_MAC = System.getProperty("os.name", "")
+            .toLowerCase(java.util.Locale.ROOT).contains("mac");
+
+    /** Phím bổ trợ Ctrl trên Windows/Linux hoặc Cmd (Command) trên macOS. */
+    public static Keys modifierKey() {
+        return IS_MAC ? Keys.COMMAND : Keys.CONTROL;
+    }
+
+    /** Nhấn tổ hợp Ctrl + phím (hoặc Cmd + phím trên Mac) vào phần tử đang được focus. */
     public void ctrl(String letter) {
         control.checkpoint();
-        new Actions(driver).keyDown(Keys.CONTROL).sendKeys(letter).keyUp(Keys.CONTROL).perform();
+        Keys mod = modifierKey();
+        new Actions(driver).keyDown(mod).sendKeys(letter).keyUp(mod).perform();
     }
 
     /** Nhấn một phím (Enter, Tab, Delete ...) vào phần tử đang focus. */
@@ -313,17 +368,18 @@ public class BrowserHelper {
     }
 
     // =====================================================================
-    //  PASTE (Ctrl+V từ System Clipboard) + sendKeys() DỰ PHÒNG
+    //  PASTE (Ctrl+V / Cmd+V từ System Clipboard) + sendKeys() DỰ PHÒNG
     // =====================================================================
 
     /**
-     * Cách 1: đưa chữ vào System Clipboard rồi nhấn Keys.CONTROL + "v" (giống thao tác tay).
+     * Cách 1: đưa chữ vào System Clipboard rồi nhấn Ctrl+V (Cmd+V trên Mac) giống thao tác tay.
      */
     public void pasteViaClipboard(WebElement el, String text) {
         ClipboardUtil.setText(text);
         control.sleep(150);
+        Keys mod = modifierKey();
         if (isTypable(el)) {
-            el.sendKeys(Keys.chord(Keys.CONTROL, "v"));
+            el.sendKeys(Keys.chord(mod, "v"));
         } else {
             ctrl("v");
         }
