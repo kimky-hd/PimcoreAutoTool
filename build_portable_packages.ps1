@@ -53,6 +53,14 @@ Copy-Item "selectors.properties" -Destination "$macPkgDir/selectors.properties"
 Copy-Item "src/main/resources/assets/app_logo.png" -Destination "$macPkgDir/logo.png"
 Copy-Item "Huong_Dan_Su_Dung_Mac.txt" -Destination "$macPkgDir/Huong_Dan_Su_Dung_Mac.txt"
 
+# Nhúng sẵn bộ máy ảo Portable JRE cho macOS
+if (Test-Path "jre_mac_aarch64.tar.gz") {
+    Write-Host "   -> Đang giải nén và nhúng sẵn Portable JRE cho macOS..." -ForegroundColor Yellow
+    New-Item -ItemType Directory -Path "$macPkgDir/jre" | Out-Null
+    tar -xzf "jre_mac_aarch64.tar.gz" -C "$macPkgDir/jre" --strip-components 1
+    Write-Host "   -> Đã nhúng JRE macOS thành công!" -ForegroundColor Green
+}
+
 $macZip = "PimcoreAutoTool_v2.0_macOS.zip"
 if (Test-Path $macZip) { Remove-Item -Force $macZip }
 Write-Host "   -> Đang nén file $macZip bằng chuẩn .NET Zip..." -ForegroundColor Yellow

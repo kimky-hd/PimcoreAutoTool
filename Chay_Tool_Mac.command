@@ -15,14 +15,20 @@ echo ""
 
 JAVA_BIN=""
 
-# 1. Kiểm tra JRE nhúng đi kèm trong thư mục jre
+# 1. Tu dong cap quyen thuc thi cho JRE nhung di kem (neu giai nen tu file zip)
+if [ -d "$TOOL_DIR/jre" ]; then
+    chmod +x "$TOOL_DIR/jre/Contents/Home/bin/"* 2>/dev/null || true
+    chmod +x "$TOOL_DIR/jre/bin/"* 2>/dev/null || true
+fi
+
+# 2. Kiem tra JRE nhung di kem trong thu muc jre
 if [ -x "$TOOL_DIR/jre/Contents/Home/bin/java" ]; then
     JAVA_BIN="$TOOL_DIR/jre/Contents/Home/bin/java"
-    echo "[OK] Su dung moi truong Java nhung di kem (Portable JRE)."
+    echo "[OK] Su dung moi truong Java nhung san di kem (Portable JRE mac)."
 elif [ -x "$TOOL_DIR/jre/bin/java" ]; then
     JAVA_BIN="$TOOL_DIR/jre/bin/java"
-    echo "[OK] Su dung moi truong Java nhung di kem (Portable JRE)."
-elif command -v java &>/dev/null; then
+    echo "[OK] Su dung moi truong Java nhung san di kem (Portable JRE mac)."
+elif java -version &>/dev/null; then
     JAVA_BIN="java"
     echo "[OK] Su dung Java co san tren macOS: $(java -version 2>&1 | head -n 1)"
 else
@@ -70,6 +76,12 @@ echo ""
 "$JAVA_BIN" -Dfile.encoding=UTF-8 \
             -Dapple.laf.useScreenMenuBar=true \
             -Dapple.awt.application.name="Pimcore Auto Tool" \
-            -jar "$TOOL_DIR/PimcoreAutoTool.jar" &
+            -jar "$TOOL_DIR/PimcoreAutoTool.jar"
 
-exit 0
+EXIT_CODE=$?
+if [ $EXIT_CODE -ne 0 ]; then
+    echo ""
+    echo "[THONG BAO] Tool dung voi ma: $EXIT_CODE"
+    read -n 1 -s -r -p "Nhan phim bat ky de dong..."
+fi
+exit $EXIT_CODE
