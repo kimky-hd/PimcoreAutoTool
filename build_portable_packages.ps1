@@ -63,8 +63,8 @@ if (Test-Path "jre_mac_aarch64.tar.gz") {
 
 $macZip = "PimcoreAutoTool_v2.0_macOS.zip"
 if (Test-Path $macZip) { Remove-Item -Force $macZip }
-Write-Host "   -> Đang nén file $macZip bằng chuẩn .NET Zip..." -ForegroundColor Yellow
-[System.IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $macPkgDir).Path, (Join-Path (Get-Location) $macZip), [System.IO.Compression.CompressionLevel]::Optimal, $false)
+Write-Host "   -> Đang nén file $macZip với quyền thực thi UNIX (0755) bằng Python..." -ForegroundColor Yellow
+python package_mac_zip.py
 Write-Host "   -> Hoàn thành gói macOS: $macZip" -ForegroundColor Green
 
 # 4. Hiển thị kết quả
