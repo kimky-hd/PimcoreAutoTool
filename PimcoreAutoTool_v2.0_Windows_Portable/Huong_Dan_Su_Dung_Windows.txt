@@ -39,3 +39,4 @@ LƯU Ý QUAN TRỌNG:
 - Nếu muốn đổi logo thương hiệu: Bạn chỉ cần chép đè file ảnh logo của bạn vào file "logo.png" trong thư mục này.
 
 Chúc Quý Khách hàng vận hành công việc hiệu quả và thuận lợi!
+

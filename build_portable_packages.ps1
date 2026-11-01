@@ -26,6 +26,7 @@ $winPkgDir = "PimcoreAutoTool_v2.0_Windows_Portable"
 if (Test-Path $winPkgDir) { Remove-Item -Recurse -Force $winPkgDir }
 New-Item -ItemType Directory -Path $winPkgDir | Out-Null
 
+Copy-Item "target/PimcoreAutoTool.jar" -Destination "PimcoreAutoTool.jar" -Force
 Copy-Item -Recurse "$jreWinDir" -Destination "$winPkgDir/jre"
 Copy-Item "target/PimcoreAutoTool.jar" -Destination "$winPkgDir/PimcoreAutoTool.jar"
 Copy-Item "Chay_Tool_Windows.bat" -Destination "$winPkgDir/Chay_Tool_Windows.bat"
@@ -35,8 +36,9 @@ Copy-Item "Huong_Dan_Su_Dung_Windows.txt" -Destination "$winPkgDir/Huong_Dan_Su_
 
 $winZip = "PimcoreAutoTool_v2.0_Windows_Portable.zip"
 if (Test-Path $winZip) { Remove-Item -Force $winZip }
-Write-Host "   -> Đang nén file $winZip..." -ForegroundColor Yellow
-Compress-Archive -Path "$winPkgDir/*" -DestinationPath $winZip -Force
+Write-Host "   -> Đang nén file $winZip bằng chuẩn .NET Zip chuẩn Windows..." -ForegroundColor Yellow
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+[System.IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $winPkgDir).Path, (Join-Path (Get-Location) $winZip), [System.IO.Compression.CompressionLevel]::Optimal, $false)
 Write-Host "   -> Hoàn thành gói Windows: $winZip" -ForegroundColor Green
 
 # 3. Đóng gói bản macOS
@@ -53,8 +55,8 @@ Copy-Item "Huong_Dan_Su_Dung_Mac.txt" -Destination "$macPkgDir/Huong_Dan_Su_Dung
 
 $macZip = "PimcoreAutoTool_v2.0_macOS.zip"
 if (Test-Path $macZip) { Remove-Item -Force $macZip }
-Write-Host "   -> Đang nén file $macZip..." -ForegroundColor Yellow
-Compress-Archive -Path "$macPkgDir/*" -DestinationPath $macZip -Force
+Write-Host "   -> Đang nén file $macZip bằng chuẩn .NET Zip..." -ForegroundColor Yellow
+[System.IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path $macPkgDir).Path, (Join-Path (Get-Location) $macZip), [System.IO.Compression.CompressionLevel]::Optimal, $false)
 Write-Host "   -> Hoàn thành gói macOS: $macZip" -ForegroundColor Green
 
 # 4. Hiển thị kết quả

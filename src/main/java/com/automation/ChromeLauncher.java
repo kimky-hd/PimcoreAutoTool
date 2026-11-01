@@ -108,6 +108,10 @@ public final class ChromeLauncher {
         command.add("--user-data-dir=" + PROFILE_DIR);
         command.add("--no-first-run");
         command.add("--no-default-browser-check");
+        // Giữ phiên làm việc vĩnh viễn: tắt chế độ tự động đóng/ngủ tab nền của Chrome
+        command.add("--disable-background-timer-throttling");
+        command.add("--disable-backgrounding-occluded-windows");
+        command.add("--disable-renderer-backgrounding");
         if (startUrls != null) {
             for (String url : startUrls) {
                 if (url != null && !url.isBlank()) {

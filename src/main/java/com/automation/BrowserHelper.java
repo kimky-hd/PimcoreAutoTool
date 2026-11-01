@@ -125,6 +125,15 @@ public class BrowserHelper {
         return waitVisibleInAnyFrame(key, defaultTimeout(), placeholders);
     }
 
+    /** Tìm phần tử hiển thị cả trong các frame lồng nhau với số giây chờ tuỳ chọn (trả về null nếu không thấy). */
+    public WebElement tryWaitVisibleInAnyFrame(String key, int timeoutSec, String... placeholders) {
+        try {
+            return waitVisibleInAnyFrame(key, timeoutSec, placeholders);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public WebElement waitVisibleInAnyFrame(String key, int timeoutSec, String... placeholders) {
         By by = sel.by(key, placeholders);
         long deadline = System.currentTimeMillis() + timeoutSec * 1000L;
@@ -430,6 +439,17 @@ public class BrowserHelper {
         if (mode == PasteMode.CLIPBOARD_ONLY) {
             throw new IllegalStateException("Ctrl+V không dán được nội dung. Giá trị hiện tại: " + preview(actual));
         }
+
+        // Dự phòng 1: Gán trực tiếp qua JavaScript (nhanh tức thì với nội dung HTML dài và không phụ thuộc Clipboard)
+        if (trySetEditorValueViaJs(el, text)) {
+            String afterJs = readEditorValue(el);
+            if (contentMatches(afterJs, expected)) {
+                log.accept("      Đã gán trực tiếp nội dung qua JavaScript DOM (" + text.length() + " ký tự)");
+                return;
+            }
+        }
+
+        // Dự phòng 2: Gõ từng ký tự bằng sendKeys()
         log.accept("      Ctrl+V chưa dán đúng (giá trị: " + preview(actual) + ") -> dự phòng sendKeys()");
         click(el);
         control.sleep(120);
@@ -437,6 +457,28 @@ public class BrowserHelper {
         typeViaSendKeys(el, text);
         verifyOrThrow(el, expected);
         log.accept("      Đã nhập bằng sendKeys() dự phòng (" + text.length() + " ký tự)");
+    }
+
+    private boolean trySetEditorValueViaJs(WebElement el, String text) {
+        try {
+            Object ok = safeJs("""
+                    var el = arguments[0];
+                    var val = arguments[1];
+                    if (!el) return false;
+                    var tag = (el.tagName || '').toUpperCase();
+                    if (tag === 'INPUT' || tag === 'TEXTAREA') {
+                        el.value = val;
+                        el.dispatchEvent(new Event('input', { bubbles: true }));
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                        return true;
+                    }
+                    return false;
+                    """, el, text);
+            control.sleep(150);
+            return Boolean.TRUE.equals(ok);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private void verifyOrThrow(WebElement el, String expected) {
@@ -448,14 +490,21 @@ public class BrowserHelper {
     }
 
     // =====================================================================
-    //  COPY (Ctrl+A, Ctrl+C) -> đọc System Clipboard
+    //  COPY: Ưu tiên đọc trực tiếp từ DOM/JS -> Dự phòng Ctrl+A, Ctrl+C
     // =====================================================================
 
     /**
-     * Click vào ô -> Ctrl+A -> Ctrl+C -> đọc System Clipboard.
-     * Dự phòng: nếu Clipboard không đổi thì đọc trực tiếp giá trị của ô.
+     * Đọc toàn bộ nội dung của ô nhập / trình soạn thảo.
+     * Ưu tiên đọc trực tiếp từ DOM (tránh xung đột System Clipboard khi người dùng đang thao tác máy).
+     * Dự phòng: nếu không đọc được từ DOM thì mới dùng Ctrl+A -> Ctrl+C.
      */
     public String copyAllFrom(WebElement el) {
+        String directDom = readEditorValue(el);
+        if (directDom != null && !directDom.isBlank()) {
+            log.accept("      Đã đọc trực tiếp nội dung từ DOM (" + directDom.length() + " ký tự, không chiếm dụng Clipboard)");
+            return directDom;
+        }
+
         click(el);
         control.sleep(200);
         ctrl("a");
@@ -481,7 +530,6 @@ public class BrowserHelper {
             if (dom != null && dom.trim().length() > clip.trim().length() * 1.05 + 10) {
                 log.accept("      Clipboard ngắn hơn nội dung ô (" + clip.length() + " < " + dom.length()
                         + " ký tự) -> dùng nội dung đọc trực tiếp từ ô");
-                ClipboardUtil.setText(dom);
                 return dom;
             }
             log.accept("      Đã copy bằng Ctrl+A, Ctrl+C (" + clip.length() + " ký tự)");
@@ -490,10 +538,9 @@ public class BrowserHelper {
         if (dom != null && !dom.isBlank()) {
             log.accept("      Ctrl+C không đưa dữ liệu vào Clipboard -> dự phòng đọc trực tiếp nội dung ô ("
                     + dom.length() + " ký tự)");
-            ClipboardUtil.setText(dom);
             return dom;
         }
-        throw new IllegalStateException("Không copy được nội dung (Clipboard và ô đều rỗng)");
+        throw new IllegalStateException("Không đọc/copy được nội dung (ô và Clipboard đều rỗng)");
     }
 
     // =====================================================================

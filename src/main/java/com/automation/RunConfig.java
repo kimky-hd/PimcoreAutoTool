@@ -7,7 +7,7 @@ import java.util.List;
  *
  * @param docUrls                Danh sách từ 1 đến 10 đường link Google Doc
  * @param pimcoreFolder          Tên thư mục trên cây Pimcore để chuột phải (mặc định 2025)
- * @param displayDate            Thời gian hiển thị (mặc định 28/12/2025)
+ * @param displayDate            Thời gian hiển thị (mặc định yyyy-MM-dd, ví dụ 2025-12-28)
  * @param syncWaitSeconds        Thời gian chờ sau khi bấm Gửi (mặc định 25 giây)
  * @param language               Giá trị chọn ở "Ngôn ngữ hiển thị"
  * @param accessChannel          Giá trị chọn ở "Access Channel"

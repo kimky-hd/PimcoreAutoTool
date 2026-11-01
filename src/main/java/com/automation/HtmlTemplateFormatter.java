@@ -71,6 +71,16 @@ public final class HtmlTemplateFormatter {
         for (Element block : blockElements) {
             String tag = block.tagName().toLowerCase(Locale.ROOT);
 
+            // ---- Trường hợp 0: Bảng biểu <table> (bảng giá vé, lịch trình, so sánh...) ----
+            if (tag.equals("table")) {
+                prevBlockWasImage = false;
+                String tableHtml = cleanTableBlock(block);
+                if (!tableHtml.isEmpty()) {
+                    outputBlocks.add(tableHtml);
+                }
+                continue;
+            }
+
             // ---- Trường hợp A: Khối chứa ảnh <img> ----
             Elements imgs = block.select("img");
             if (!imgs.isEmpty() || tag.equals("img")) {
@@ -269,18 +279,30 @@ public final class HtmlTemplateFormatter {
     }
 
     /**
-     * Lấy nội dung bên trong của Heading: loại bỏ hoàn toàn thẻ strong/b bên trong để tránh lồng nhau.
+     * Lấy nội dung bên trong của Heading: loại bỏ hoàn toàn thẻ strong/b bên trong để tránh lồng nhau,
+     * đồng thời giữ lại thẻ liên kết &lt;a href="..."&gt; nếu có.
      */
     private static String cleanHeadingInner(Element heading) {
         // Sao chép element để không ảnh hưởng DOM gốc
         Element clone = heading.clone();
-        // Mở bọc toàn bộ thẻ strong, b, em, i bên trong heading
-        for (Element s : clone.select("strong, b")) {
+        // Mở bọc toàn bộ thẻ strong, b, span bên trong heading
+        for (Element s : clone.select("strong, b, span")) {
             s.unwrap();
         }
-        // Loại bỏ mọi thuộc tính
+        // Loại bỏ mọi thuộc tính rác, chỉ giữ href trên thẻ <a>
         for (Element el : clone.getAllElements()) {
-            cleanAllAttributes(el);
+            if (el == clone) {
+                continue;
+            }
+            if (el.tagName().equalsIgnoreCase("a")) {
+                String href = el.attr("href").trim();
+                cleanAllAttributes(el);
+                if (!href.isEmpty()) {
+                    el.attr("href", href);
+                }
+            } else {
+                cleanAllAttributes(el);
+            }
         }
         String html = clone.html().trim();
         // Xóa bỏ bất kỳ ký tự hoặc thẻ thừa nào còn sót lại
@@ -352,7 +374,7 @@ public final class HtmlTemplateFormatter {
             if (!el.tagName().equalsIgnoreCase("a")) {
                 cleanAllAttributes(el);
             } else {
-                String href = el.attr("href");
+                String href = el.attr("href").trim();
                 cleanAllAttributes(el);
                 if (!href.isBlank()) {
                     el.attr("href", href);
@@ -395,14 +417,92 @@ public final class HtmlTemplateFormatter {
         return count > 0 ? sb.toString() : "";
     }
 
+    /**
+     * Chuẩn hóa bảng biểu &lt;table&gt;: giữ nguyên cấu trúc hàng/cột (tr, th, td, colspan, rowspan)
+     * và dọn sạch các thuộc tính style/class rác từ Google Docs.
+     */
+    private static String cleanTableBlock(Element tableBlock) {
+        Element clone = tableBlock.clone();
+        clone.select("colgroup, col").remove();
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("<table>\n  <tbody>\n");
+        int rowCount = 0;
+
+        for (Element tr : clone.select("tr")) {
+            Elements cells = tr.select("> th, > td");
+            if (cells.isEmpty()) {
+                continue;
+            }
+            sb.append("    <tr>\n");
+            for (Element cell : cells) {
+                String cellTag = cell.tagName().toLowerCase(Locale.ROOT).equals("th") ? "th" : "td";
+                String colspan = cell.attr("colspan").trim();
+                String rowspan = cell.attr("rowspan").trim();
+
+                // Nếu trong ô bảng có thẻ <p> bọc đơn lẻ thì gỡ bọc <p> để ô gọn gàng
+                for (Element p : cell.select("p")) {
+                    p.unwrap();
+                }
+                String cellInner = cleanParagraphInner(cell);
+
+                sb.append("      <").append(cellTag);
+                if (!colspan.isEmpty() && !"1".equals(colspan)) {
+                    sb.append(" colspan=\"").append(colspan).append("\"");
+                }
+                if (!rowspan.isEmpty() && !"1".equals(rowspan)) {
+                    sb.append(" rowspan=\"").append(rowspan).append("\"");
+                }
+                sb.append(">").append(cellInner).append("</").append(cellTag).append(">\n");
+            }
+            sb.append("    </tr>\n");
+            rowCount++;
+        }
+        sb.append("  </tbody>\n</table>");
+        return rowCount > 0 ? sb.toString() : "";
+    }
+
+    /**
+     * Phân tích thống kê cấu trúc HTML sau chuẩn hóa và phát hiện cảnh báo chất lượng
+     * (ví dụ: thiếu ảnh, ảnh chưa được upload lên CDN, hoặc rỗng).
+     */
+    public static List<String> inspectHtmlStatsAndWarnings(String cleanHtml) {
+        List<String> messages = new ArrayList<>();
+        if (cleanHtml == null || cleanHtml.isBlank()) {
+            messages.add("[CẢNH BÁO] Nội dung HTML sau chuẩn hóa bị rỗng!");
+            return messages;
+        }
+        Document doc = Jsoup.parseBodyFragment(cleanHtml);
+        int h2Count = doc.select("h2").size();
+        int h3Count = doc.select("h3").size();
+        int pCount = doc.select("p").size();
+        Elements imgs = doc.select("img");
+        int imgCount = imgs.size();
+        int tableCount = doc.select("table").size();
+
+        messages.add(String.format("Thống kê cấu trúc HTML: H2=%d | H3=%d | Đoạn <p>=%d | Ảnh <img>=%d | Bảng <table>=%d | Độ dài=%d ký tự",
+                h2Count, h3Count, pCount, imgCount, tableCount, cleanHtml.length()));
+
+        if (imgCount == 0) {
+            messages.add("[CẢNH BÁO CHẤT LƯỢNG] Bài viết không có thẻ <img> nào (có thể bài gốc không có ảnh hoặc Pimcore chưa đồng bộ xong ảnh).");
+        } else {
+            int unSyncedCount = 0;
+            for (Element img : imgs) {
+                String src = img.attr("src").trim().toLowerCase(Locale.ROOT);
+                if (src.isEmpty() || src.contains("googleusercontent.com") || src.contains("docs.google.com")) {
+                    unSyncedCount++;
+                }
+            }
+            if (unSyncedCount > 0) {
+                messages.add("[CẢNH BÁO CHẤT LƯỢNG] Phát hiện " + unSyncedCount + "/" + imgCount
+                        + " ảnh vẫn giữ link tạm Google (chưa chuyển sang CDN) hoặc rỗng src!");
+            }
+        }
+        return messages;
+    }
+
     private static void cleanAllAttributes(Element el) {
-        el.removeAttr("id");
-        el.removeAttr("class");
-        el.removeAttr("style");
-        el.removeAttr("dir");
-        el.removeAttr("lang");
-        el.removeAttr("data-mce-style");
-        el.removeAttr("contenteditable");
+        el.clearAttributes();
     }
 
     private static String cleanPlainText(String s) {

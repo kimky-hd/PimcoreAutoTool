@@ -1,6 +1,8 @@
 package com.automation;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import javax.swing.BorderFactory;
+import javax.swing.Box;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -10,10 +12,12 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JSpinner;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.JToolBar;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
@@ -23,6 +27,7 @@ import javax.swing.event.DocumentListener;
 import javax.swing.text.DefaultCaret;
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
@@ -76,10 +81,12 @@ public class MainUI extends JFrame implements FlowListener {
             "Tạm dừng sau mỗi bài", true);
 
     private final JTextField txtFolder = new JTextField("2025", 10);
-    private final JTextField txtDate = new JTextField("28/12/2025", 10);
+    private final JTextField txtDate = new JTextField("2025-12-28", 10);
+    private final JButton btnCalendar = new JButton();
+    private DatePickerPopup datePickerPopup;
     private final JSpinner spSyncWait = new JSpinner(new SpinnerNumberModel(25, 1, 3600, 1));
-    private final JTextField txtLanguage = new JTextField("Vietnamese", 10);
-    private final JTextField txtChannel = new JTextField("Web", 10);
+    private final JComboBox<String> cbLanguage = new JComboBox<>(new String[]{"Vietnamese", "English"});
+    private final JComboBox<String> cbChannel = new JComboBox<>(new String[]{"Web", "App"});
     private final JComboBox<PasteMode> cbPasteMode = new JComboBox<>(PasteMode.values());
 
     // ---- Nút điều khiển ----
@@ -91,6 +98,7 @@ public class MainUI extends JFrame implements FlowListener {
     private final JButton btnOpenSelectors = new JButton("Mở selectors.properties");
     private final JButton btnReloadSelectors = new JButton("Nạp lại selectors");
     private final JButton btnClearLog = new JButton("Xoá log");
+    private final JButton btnToggleTheme = new JButton();
 
     // ---- Tab HTML Đã Chuẩn Hóa ----
     private final JComboBox<ArticleHtmlItem> cbArticles = new JComboBox<>();
@@ -119,6 +127,9 @@ public class MainUI extends JFrame implements FlowListener {
         this.selectors = new Selectors();
         this.logFile = Paths.get(System.getProperty("user.dir"), "logs",
                 "automation_" + LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE) + ".log");
+        cbLanguage.setEditable(true);
+        cbChannel.setEditable(true);
+        initDatePicker();
         loadPreferences();
         buildLayout();
         bindActions();
@@ -143,42 +154,111 @@ public class MainUI extends JFrame implements FlowListener {
     }
 
     // =====================================================================
-    //  GIAO DIỆN
+    //  GIAO DIỆN PHONG CÁCH INTELLIJ IDEA (DARCULA THEME)
     // =====================================================================
 
     private void buildLayout() {
-        JPanel root = new JPanel(new BorderLayout(8, 8));
-        root.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        JPanel root = new JPanel(new BorderLayout());
         setContentPane(root);
 
-        // ---- Khung cấu hình ----
+        // 1. TOOLBAR PHÍA TRÊN (Giống Navigation / Run Toolbar của IntelliJ)
+        JToolBar topBar = new JToolBar();
+        topBar.setFloatable(false);
+        topBar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(48, 52, 60)));
+        topBar.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+
+        JLabel appTitle = new JLabel("  Pimcore Automation Flow  ");
+        appTitle.setFont(new Font("Segoe UI", Font.BOLD, 13));
+        appTitle.setForeground(new Color(180, 190, 205));
+        topBar.add(appTitle);
+        topBar.add(Box.createHorizontalStrut(8));
+
+        // Gán Vector Icon và Text chuẩn IntelliJ
+        btnChrome.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.CHROME_BLUE, 16));
+        btnMockTabs.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.TEST_LAB, 16));
+        btnStart.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.RUN_GREEN, 16));
+        btnPause.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.PAUSE_AMBER, 16));
+        btnStop.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.STOP_RED, 16));
+
+        btnChrome.setText("1. Mở Chrome Debug");
+        btnMockTabs.setText("Tab Mock Test");
+        btnStart.setText("2. Chạy (Run)");
+        btnPause.setText("Tạm dừng");
+        btnStop.setText("Dừng (Stop)");
+
+        styleToolButton(btnChrome, new Color(45, 68, 98), Color.WHITE);
+        styleToolButton(btnMockTabs, new Color(55, 58, 62), new Color(190, 195, 200));
+        styleToolButton(btnStart, new Color(38, 105, 55), Color.WHITE);
+        styleToolButton(btnPause, new Color(55, 58, 62), new Color(190, 195, 200));
+        styleToolButton(btnStop, new Color(140, 40, 40), Color.WHITE);
+
+        topBar.add(btnChrome);
+        topBar.add(Box.createHorizontalStrut(6));
+        topBar.add(btnMockTabs);
+        topBar.add(Box.createHorizontalStrut(12));
+        topBar.add(btnStart);
+        topBar.add(Box.createHorizontalStrut(6));
+        topBar.add(btnPause);
+        topBar.add(Box.createHorizontalStrut(6));
+        topBar.add(btnStop);
+
+        topBar.add(Box.createHorizontalGlue());
+
+        btnOpenSelectors.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.SETTINGS_FILE, 15));
+        btnReloadSelectors.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.RELOAD_ARROW, 15));
+        btnClearLog.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.CLEAR_BIN, 15));
+
+        btnOpenSelectors.setText("selectors.properties");
+        btnReloadSelectors.setText("Nạp lại");
+        btnClearLog.setText("Xóa log");
+
+        styleFlatLinkButton(btnOpenSelectors);
+        styleFlatLinkButton(btnReloadSelectors);
+        styleFlatLinkButton(btnClearLog);
+        styleFlatLinkButton(btnToggleTheme);
+        updateThemeButtonUI();
+
+        topBar.add(btnOpenSelectors);
+        topBar.add(Box.createHorizontalStrut(6));
+        topBar.add(btnReloadSelectors);
+        topBar.add(Box.createHorizontalStrut(6));
+        topBar.add(btnClearLog);
+        topBar.add(Box.createHorizontalStrut(6));
+        topBar.add(btnToggleTheme);
+
+        root.add(topBar, BorderLayout.NORTH);
+
+        // 2. KHUNG CẤU HÌNH (INSPECTION / SETTINGS PANEL)
         JPanel cfg = new JPanel(new GridBagLayout());
-        cfg.setBorder(BorderFactory.createTitledBorder("Cấu hình chạy (Hỗ trợ 1 - 10 Google Docs)"));
+        cfg.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(48, 52, 60)),
+                BorderFactory.createEmptyBorder(8, 14, 8, 14)
+        ));
         GridBagConstraints c = new GridBagConstraints();
-        c.insets = new Insets(3, 6, 3, 6);
+        c.insets = new Insets(3, 8, 3, 8);
         c.anchor = GridBagConstraints.WEST;
         c.fill = GridBagConstraints.HORIZONTAL;
 
         int row = 0;
 
-        // Row 0: Danh sách Google Docs (1-10 link)
-        addLabel(cfg, c, 0, row, "Danh sách Google Docs:\n(1-10 link, mỗi dòng 1 link)");
+        // Row 0: Danh sách Google Docs
+        addLabel(cfg, c, 0, row, "Danh sách Google Docs:\n(1-10 URL, mỗi dòng 1 bài)");
         c.gridx = 1;
         c.gridy = row;
         c.gridwidth = 5;
         c.weightx = 1.0;
         c.fill = GridBagConstraints.BOTH;
-        txtDocUrls.setFont(new Font("Consolas", Font.PLAIN, 12));
+        txtDocUrls.setFont(IntelliJThemeHelper.JETBRAINS_MONO_PLAIN);
         txtDocUrls.setLineWrap(false);
         JScrollPane scrollDocUrls = new JScrollPane(txtDocUrls);
-        scrollDocUrls.setPreferredSize(new Dimension(500, 95));
+        scrollDocUrls.setPreferredSize(new Dimension(500, 85));
         cfg.add(scrollDocUrls, c);
         c.gridwidth = 1;
         c.weightx = 0;
         c.fill = GridBagConstraints.HORIZONTAL;
 
         row++;
-        // Row 1: Đếm link & Các tùy chọn thực thi
+        // Row 1: Đếm link & Tùy chọn thực thi
         c.gridx = 1;
         c.gridy = row;
         c.gridwidth = 2;
@@ -187,12 +267,10 @@ public class MainUI extends JFrame implements FlowListener {
         c.gridx = 3;
         c.gridy = row;
         c.gridwidth = 3;
-        JPanel optionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 0));
+        JPanel optionsPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        optionsPanel.setOpaque(false);
         chkSaveHtmlToDoc.setFont(chkSaveHtmlToDoc.getFont().deriveFont(Font.BOLD));
-        chkSaveHtmlToDoc.setForeground(new Color(0, 110, 50));
-        chkPasteToAppScript.setFont(chkPasteToAppScript.getFont().deriveFont(Font.PLAIN));
         chkPauseAfterArticle.setFont(chkPauseAfterArticle.getFont().deriveFont(Font.BOLD));
-        chkPauseAfterArticle.setForeground(new Color(0, 90, 170));
 
         optionsPanel.add(chkSaveHtmlToDoc);
         optionsPanel.add(chkPasteToAppScript);
@@ -201,113 +279,133 @@ public class MainUI extends JFrame implements FlowListener {
         c.gridwidth = 1;
 
         row++;
-        // Row 2: Thư mục Pimcore, Thời gian, Thời gian chờ Sync
+        // Row 2: Thư mục Pimcore, Thời gian, Hạn mức Timeout chờ Sync
         addLabel(cfg, c, 0, row, "Thư mục Pimcore:");
         addField(cfg, c, 1, row, txtFolder);
         addLabel(cfg, c, 2, row, "Thời gian hiển thị:");
         addField(cfg, c, 3, row, txtDate);
-        addLabel(cfg, c, 4, row, "Chờ Sync (giây):");
+        addLabel(cfg, c, 4, row, "Sync Timeout tối đa (s):");
+        spSyncWait.setToolTipText("Hạn mức chờ tối đa trước khi báo lỗi. Tool sẽ tự động đi tiếp ngay khi Pimcore tải xong dữ liệu (không bắt buộc đợi đủ số giây này).");
         addField(cfg, c, 5, row, spSyncWait);
 
         row++;
         // Row 3: Ngôn ngữ, Channel, Phương thức nhập
         addLabel(cfg, c, 0, row, "Ngôn ngữ hiển thị:");
-        addField(cfg, c, 1, row, txtLanguage);
+        addField(cfg, c, 1, row, cbLanguage);
         addLabel(cfg, c, 2, row, "Access Channel:");
-        addField(cfg, c, 3, row, txtChannel);
+        addField(cfg, c, 3, row, cbChannel);
         addLabel(cfg, c, 4, row, "Phương thức nhập:");
         addField(cfg, c, 5, row, cbPasteMode);
 
         row++;
-        // Row 4: Selectors source info
+        // Row 4: Selectors file info
         c.gridx = 0;
         c.gridy = row;
         c.gridwidth = 6;
-        lblSelectorSource.setForeground(new Color(90, 90, 90));
+        lblSelectorSource.setForeground(new Color(130, 135, 145));
+        lblSelectorSource.setFont(new Font("Segoe UI", Font.PLAIN, 11));
         cfg.add(lblSelectorSource, c);
         c.gridwidth = 1;
 
-        // ---- Nút điều khiển ----
-        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        buttons.setBorder(BorderFactory.createTitledBorder("Điều khiển"));
-        Font bold = btnStart.getFont().deriveFont(Font.BOLD, 13f);
-        btnChrome.setFont(bold);
-        btnMockTabs.setFont(bold);
-        btnMockTabs.setForeground(new Color(10, 80, 160));
-        btnStart.setFont(bold);
-        btnStop.setFont(bold);
-        btnStart.setForeground(new Color(0, 110, 0));
-        btnStop.setForeground(new Color(180, 0, 0));
-        buttons.add(btnChrome);
-        buttons.add(btnMockTabs);
-        buttons.add(btnStart);
-        buttons.add(btnPause);
-        buttons.add(btnStop);
-        buttons.add(new JLabel("   "));
-        buttons.add(btnOpenSelectors);
-        buttons.add(btnReloadSelectors);
-        buttons.add(btnClearLog);
+        // 3. KHU VỰC TOOL WINDOWS / TABS (IntelliJ Style)
+        tabbedPane.setBorder(BorderFactory.createEmptyBorder());
 
-        JPanel north = new JPanel(new BorderLayout(4, 4));
-        north.add(cfg, BorderLayout.CENTER);
-        north.add(buttons, BorderLayout.SOUTH);
-        root.add(north, BorderLayout.NORTH);
-
-        // ---- Tabbed Center ----
-        // Tab 1: Tiến trình & Log
-        JPanel logTab = new JPanel(new BorderLayout(4, 4));
+        // Tab 1: Terminal / Run Log
+        JPanel logTab = new JPanel(new BorderLayout());
         logArea.setEditable(false);
         logArea.setLineWrap(true);
         logArea.setWrapStyleWord(true);
-        logArea.setFont(new Font("Consolas", Font.PLAIN, 13));
-        logArea.setBackground(new Color(250, 250, 247));
+        logArea.setFont(IntelliJThemeHelper.JETBRAINS_MONO_PLAIN);
+        logArea.setBackground(new Color(30, 31, 34)); // Dark editor background
+        logArea.setForeground(new Color(187, 187, 187));
         ((DefaultCaret) logArea.getCaret()).setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
         JScrollPane scrollLog = new JScrollPane(logArea);
+        scrollLog.setBorder(BorderFactory.createEmptyBorder());
         logTab.add(scrollLog, BorderLayout.CENTER);
-        tabbedPane.addTab("📋 Tiến trình & Log", logTab);
+        tabbedPane.addTab("  Run: Execution Log  ", logTab);
 
-        // Tab 2: HTML Đã Chuẩn Hóa
-        JPanel htmlTab = new JPanel(new BorderLayout(6, 6));
-        htmlTab.setBorder(BorderFactory.createEmptyBorder(6, 6, 6, 6));
+        // Tab 2: HTML Output / Editor
+        JPanel htmlTab = new JPanel(new BorderLayout());
+        JPanel htmlToolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 10, 6));
+        htmlToolbar.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(48, 52, 60)));
 
-        JPanel htmlToolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
-        htmlToolbar.add(new JLabel("Chọn bài viết:"));
-        cbArticles.setPreferredSize(new Dimension(420, 26));
+        JLabel lblSelectArticle = new JLabel("Bài viết:");
+        lblSelectArticle.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        htmlToolbar.add(lblSelectArticle);
+        cbArticles.setPreferredSize(new Dimension(380, 28));
         htmlToolbar.add(cbArticles);
-        btnCopyCurrentHtml.setFont(btnCopyCurrentHtml.getFont().deriveFont(Font.BOLD));
+
+        btnCopyCurrentHtml.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.COPY_CLIPBOARD, 16));
+        btnCopyCurrentHtml.setText("Copy HTML bài này");
+        styleToolButton(btnCopyCurrentHtml, new Color(45, 68, 98), Color.WHITE);
         htmlToolbar.add(btnCopyCurrentHtml);
+
+        btnOpenOutputDir.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.FOLDER_OPEN, 16));
+        btnOpenOutputDir.setText("Thư mục output_html");
+        styleFlatLinkButton(btnOpenOutputDir);
         htmlToolbar.add(btnOpenOutputDir);
 
-        JPanel htmlHeader = new JPanel(new BorderLayout(4, 4));
+        JPanel htmlHeader = new JPanel(new BorderLayout());
         htmlHeader.add(htmlToolbar, BorderLayout.NORTH);
-        lblFileSavedInfo.setFont(lblFileSavedInfo.getFont().deriveFont(Font.ITALIC, 12f));
-        lblFileSavedInfo.setForeground(new Color(70, 70, 70));
-        lblFileSavedInfo.setBorder(BorderFactory.createEmptyBorder(2, 8, 4, 0));
+        lblFileSavedInfo.setFont(IntelliJThemeHelper.JETBRAINS_MONO_PLAIN.deriveFont(11f));
+        lblFileSavedInfo.setForeground(new Color(120, 130, 140));
+        lblFileSavedInfo.setBorder(BorderFactory.createEmptyBorder(4, 12, 4, 12));
         htmlHeader.add(lblFileSavedInfo, BorderLayout.SOUTH);
-
         htmlTab.add(htmlHeader, BorderLayout.NORTH);
 
         txtHtmlContent.setEditable(false);
         txtHtmlContent.setLineWrap(true);
         txtHtmlContent.setWrapStyleWord(true);
-        txtHtmlContent.setFont(new Font("Consolas", Font.PLAIN, 12));
-        txtHtmlContent.setBackground(new Color(252, 252, 250));
+        txtHtmlContent.setFont(IntelliJThemeHelper.JETBRAINS_MONO_PLAIN);
+        txtHtmlContent.setBackground(new Color(30, 31, 34));
+        txtHtmlContent.setForeground(new Color(220, 220, 220));
         JScrollPane scrollHtml = new JScrollPane(txtHtmlContent);
+        scrollHtml.setBorder(BorderFactory.createEmptyBorder());
         htmlTab.add(scrollHtml, BorderLayout.CENTER);
 
-        tabbedPane.addTab("📄 HTML Đã Chuẩn Hóa", htmlTab);
+        tabbedPane.addTab("  Code: Cleaned Template HTML  ", htmlTab);
 
-        root.add(tabbedPane, BorderLayout.CENTER);
+        // Ghép Cấu hình và Tabs vào SplitPane
+        JSplitPane splitPane = new JSplitPane(JSplitPane.VERTICAL_SPLIT, cfg, tabbedPane);
+        splitPane.setDividerSize(4);
+        splitPane.setContinuousLayout(true);
+        splitPane.setBorder(BorderFactory.createEmptyBorder());
+        root.add(splitPane, BorderLayout.CENTER);
 
-        // ---- Thanh trạng thái ----
-        JPanel south = new JPanel(new BorderLayout(8, 4));
+        // 4. THANH TRẠNG THÁI STATUS BAR PHÍA DƯỚI (IntelliJ Status Bar)
+        JPanel statusBar = new JPanel(new BorderLayout(12, 0));
+        statusBar.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(48, 52, 60)),
+                BorderFactory.createEmptyBorder(4, 14, 4, 14)
+        ));
+        lblStatus.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        lblStatus.setForeground(new Color(180, 185, 195));
+
         progressBar.setStringPainted(true);
-        progressBar.setPreferredSize(new Dimension(340, 22));
+        progressBar.setPreferredSize(new Dimension(300, 18));
         progressBar.setString("0 / 0 bước");
-        lblStatus.setFont(lblStatus.getFont().deriveFont(Font.BOLD));
-        south.add(lblStatus, BorderLayout.CENTER);
-        south.add(progressBar, BorderLayout.EAST);
-        root.add(south, BorderLayout.SOUTH);
+        progressBar.setFont(new Font("Segoe UI", Font.PLAIN, 11));
+
+        statusBar.add(lblStatus, BorderLayout.CENTER);
+        statusBar.add(progressBar, BorderLayout.EAST);
+        root.add(statusBar, BorderLayout.SOUTH);
+    }
+
+    private static void styleToolButton(JButton btn, Color bg, Color fg) {
+        btn.setFont(new Font("Segoe UI", Font.BOLD, 12));
+        btn.setBackground(bg);
+        btn.setForeground(fg);
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.putClientProperty("JButton.buttonType", "roundRect");
+        btn.setBorder(BorderFactory.createEmptyBorder(6, 12, 6, 12));
+    }
+
+    private static void styleFlatLinkButton(JButton btn) {
+        btn.setFont(new Font("Segoe UI", Font.PLAIN, 12));
+        btn.setFocusPainted(false);
+        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btn.setBorder(BorderFactory.createEmptyBorder(5, 10, 5, 10));
     }
 
     private static void addLabel(JPanel panel, GridBagConstraints c, int x, int y, String text) {
@@ -334,6 +432,7 @@ public class MainUI extends JFrame implements FlowListener {
         btnOpenSelectors.addActionListener(e -> openSelectorsFile());
         btnReloadSelectors.addActionListener(e -> reloadSelectors());
         btnClearLog.addActionListener(e -> logArea.setText(""));
+        btnToggleTheme.addActionListener(e -> toggleTheme());
 
         // Lắng nghe thay đổi ô dán Google Docs để cập nhật bộ đếm
         txtDocUrls.getDocument().addDocumentListener(new DocumentListener() {
@@ -442,12 +541,14 @@ public class MainUI extends JFrame implements FlowListener {
         chkPauseAfterArticle.setEnabled(!running);
         txtFolder.setEnabled(!running);
         txtDate.setEnabled(!running);
+        btnCalendar.setEnabled(!running);
         spSyncWait.setEnabled(!running);
-        txtLanguage.setEnabled(!running);
-        txtChannel.setEnabled(!running);
+        cbLanguage.setEnabled(!running);
+        cbChannel.setEnabled(!running);
         cbPasteMode.setEnabled(!running);
         if (!running) {
             btnPause.setText("Tạm dừng");
+            btnPause.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.PAUSE_AMBER, 16));
         }
     }
 
@@ -471,6 +572,14 @@ public class MainUI extends JFrame implements FlowListener {
                 String chromePath = selectors.get("chrome.path", "");
                 onLog("Đang mở Chrome: " + ChromeLauncher.describeCommand(chromePath));
                 List<String> urls = new ArrayList<>();
+                String pimcoreUrl = selectors.get("pimcore.loginUrl", "");
+                String appScriptUrl = selectors.get("appscript.url", "");
+                if (!pimcoreUrl.isBlank()) {
+                    urls.add(pimcoreUrl.trim());
+                }
+                if (!appScriptUrl.isBlank()) {
+                    urls.add(appScriptUrl.trim());
+                }
                 List<String> docUrls = parseValidDocUrls();
                 if (!docUrls.isEmpty()) {
                     urls.add(docUrls.get(0));
@@ -593,9 +702,10 @@ public class MainUI extends JFrame implements FlowListener {
                     "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
             return;
         }
-        if (!date.matches("\\d{1,2}/\\d{1,2}/\\d{4}.*")) {
+        if (!date.matches("\\d{4}-\\d{2}-\\d{2}.*") && !date.matches("\\d{1,2}/\\d{1,2}/\\d{4}.*")) {
             int choice = JOptionPane.showConfirmDialog(this,
-                    "Thời gian \"" + date + "\" không theo dạng dd/MM/yyyy. Vẫn tiếp tục?",
+                    "Thời gian \"" + date + "\" không theo định dạng yyyy-MM-dd (ví dụ: "
+                            + LocalDate.now().format(DatePickerPopup.FORMATTER) + "). Vẫn tiếp tục?",
                     "Kiểm tra định dạng ngày", JOptionPane.YES_NO_OPTION);
             if (choice != JOptionPane.YES_OPTION) {
                 return;
@@ -614,8 +724,8 @@ public class MainUI extends JFrame implements FlowListener {
                 folder,
                 date,
                 (Integer) spSyncWait.getValue(),
-                txtLanguage.getText().trim(),
-                txtChannel.getText().trim(),
+                getLanguage(),
+                getChannel(),
                 (PasteMode) cbPasteMode.getSelectedItem(),
                 chkPauseAfterArticle.isSelected(),
                 chkSaveHtmlToDoc.isSelected(),
@@ -646,6 +756,8 @@ public class MainUI extends JFrame implements FlowListener {
         boolean nowPaused = !flow.control().isPaused();
         flow.control().setPaused(nowPaused);
         btnPause.setText(nowPaused ? "Tiếp tục" : "Tạm dừng");
+        btnPause.setIcon(IntelliJThemeHelper.createVectorIcon(
+                nowPaused ? IntelliJThemeHelper.VectorType.RUN_GREEN : IntelliJThemeHelper.VectorType.PAUSE_AMBER, 16));
         onLog(nowPaused ? "[TẠM DỪNG] Tool sẽ đứng lại ở thao tác kế tiếp. Bấm \"Tiếp tục\" để chạy tiếp."
                 : "[TIẾP TỤC] Tool tiếp tục chạy.");
         onStatus(nowPaused ? "ĐANG TẠM DỪNG" : "Đang chạy...");
@@ -810,16 +922,77 @@ public class MainUI extends JFrame implements FlowListener {
         }
     }
 
+    private void initDatePicker() {
+        btnCalendar.setIcon(IntelliJThemeHelper.createVectorIcon(IntelliJThemeHelper.VectorType.CHEVRON_DOWN, 13));
+        btnCalendar.setFocusable(false);
+        btnCalendar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnCalendar.setToolTipText("Mở bảng chọn ngày tháng (Calendar)");
+        btnCalendar.putClientProperty("JButton.buttonType", "borderless");
+        btnCalendar.setBorder(BorderFactory.createEmptyBorder(0, 4, 0, 4));
+        txtDate.putClientProperty(FlatClientProperties.TEXT_FIELD_TRAILING_COMPONENT, btnCalendar);
+
+        datePickerPopup = new DatePickerPopup(txtDate);
+        btnCalendar.addActionListener(e -> datePickerPopup.showPopup());
+        txtDate.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseClicked(java.awt.event.MouseEvent e) {
+                if (e.getClickCount() == 2) {
+                    datePickerPopup.showPopup();
+                }
+            }
+        });
+    }
+
+    private String getLanguage() {
+        Object item = cbLanguage.getEditor().getItem();
+        if (item != null && !item.toString().trim().isEmpty()) {
+            return item.toString().trim();
+        }
+        Object sel = cbLanguage.getSelectedItem();
+        return sel != null ? sel.toString().trim() : "Vietnamese";
+    }
+
+    private void setLanguage(String lang) {
+        if (lang != null && !lang.trim().isEmpty()) {
+            cbLanguage.setSelectedItem(lang.trim());
+            cbLanguage.getEditor().setItem(lang.trim());
+        }
+    }
+
+    private String getChannel() {
+        Object item = cbChannel.getEditor().getItem();
+        if (item != null && !item.toString().trim().isEmpty()) {
+            return item.toString().trim();
+        }
+        Object sel = cbChannel.getSelectedItem();
+        return sel != null ? sel.toString().trim() : "Web";
+    }
+
+    private void setChannel(String channel) {
+        if (channel != null && !channel.trim().isEmpty()) {
+            cbChannel.setSelectedItem(channel.trim());
+            cbChannel.getEditor().setItem(channel.trim());
+        }
+    }
+
     private void loadPreferences() {
         txtDocUrls.setText(prefs.get("docUrls", ""));
         chkSaveHtmlToDoc.setSelected(prefs.getBoolean("saveHtmlToDoc", true));
         chkPasteToAppScript.setSelected(prefs.getBoolean("pasteToAppScript", true));
         chkPauseAfterArticle.setSelected(prefs.getBoolean("pauseAfterArticle", true));
         txtFolder.setText(prefs.get("folder", "2025"));
-        txtDate.setText(prefs.get("date", "28/12/2025"));
+        String savedDate = prefs.get("date", "2025-12-28");
+        if (savedDate.contains("/")) {
+            try {
+                savedDate = LocalDate.parse(savedDate, DateTimeFormatter.ofPattern("dd/MM/yyyy")).format(DatePickerPopup.FORMATTER);
+            } catch (Exception ignored) {
+                savedDate = "2025-12-28";
+            }
+        }
+        txtDate.setText(savedDate);
         spSyncWait.setValue(prefs.getInt("syncWait", 25));
-        txtLanguage.setText(prefs.get("language", "Vietnamese"));
-        txtChannel.setText(prefs.get("channel", "Web"));
+        setLanguage(prefs.get("language", "Vietnamese"));
+        setChannel(prefs.get("channel", "Web"));
         try {
             cbPasteMode.setSelectedItem(PasteMode.valueOf(prefs.get("pasteMode", PasteMode.CLIPBOARD_THEN_SENDKEYS.name())));
         } catch (IllegalArgumentException e) {
@@ -836,8 +1009,8 @@ public class MainUI extends JFrame implements FlowListener {
         prefs.put("folder", txtFolder.getText().trim());
         prefs.put("date", txtDate.getText().trim());
         prefs.putInt("syncWait", (Integer) spSyncWait.getValue());
-        prefs.put("language", txtLanguage.getText().trim());
-        prefs.put("channel", txtChannel.getText().trim());
+        prefs.put("language", getLanguage());
+        prefs.put("channel", getChannel());
         PasteMode mode = (PasteMode) cbPasteMode.getSelectedItem();
         prefs.put("pasteMode", mode == null ? PasteMode.CLIPBOARD_THEN_SENDKEYS.name() : mode.name());
     }
@@ -863,12 +1036,68 @@ public class MainUI extends JFrame implements FlowListener {
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
+            Preferences p = Preferences.userNodeForPackage(MainUI.class);
+            boolean isDark = p.getBoolean("appThemeIsDark", true);
+            setupTheme(isDark);
+            new MainUI().setVisible(true);
+        });
+    }
+
+    private void updateThemeButtonUI() {
+        boolean dark = isDarkTheme();
+        btnToggleTheme.setIcon(IntelliJThemeHelper.createVectorIcon(
+                dark ? IntelliJThemeHelper.VectorType.THEME_SUN : IntelliJThemeHelper.VectorType.THEME_MOON, 15));
+        btnToggleTheme.setText(dark ? "Giao diện sáng" : "Giao diện tối");
+        btnToggleTheme.setToolTipText(dark ? "Chuyển sang giao diện IntelliJ Light" : "Chuyển sang giao diện IntelliJ Darcula");
+    }
+
+    private boolean isDarkTheme() {
+        return prefs.getBoolean("appThemeIsDark", true);
+    }
+
+    private void toggleTheme() {
+        boolean nextIsDark = !isDarkTheme();
+        prefs.putBoolean("appThemeIsDark", nextIsDark);
+        setupTheme(nextIsDark);
+
+        // Cập nhật lại màu sắc trình soạn thảo logArea và txtHtmlContent theo theme
+        if (nextIsDark) {
+            logArea.setBackground(new Color(30, 31, 34));
+            logArea.setForeground(new Color(187, 187, 187));
+            txtHtmlContent.setBackground(new Color(30, 31, 34));
+            txtHtmlContent.setForeground(new Color(220, 220, 220));
+        } else {
+            logArea.setBackground(new Color(248, 249, 250));
+            logArea.setForeground(new Color(33, 37, 41));
+            txtHtmlContent.setBackground(new Color(255, 255, 255));
+            txtHtmlContent.setForeground(new Color(33, 37, 41));
+        }
+
+        SwingUtilities.updateComponentTreeUI(this);
+        updateThemeButtonUI();
+        onLog("Đã đổi sang " + (nextIsDark ? "Giao diện tối (IntelliJ Darcula)" : "Giao diện sáng (IntelliJ Light)"));
+    }
+
+    private static void setupTheme(boolean isDark) {
+        try {
+            if (isDark) {
+                com.formdev.flatlaf.FlatDarculaLaf.setup();
+            } else {
+                com.formdev.flatlaf.FlatIntelliJLaf.setup();
+            }
+            UIManager.put("Component.arrowType", "chevron");
+            UIManager.put("ScrollBar.showButtons", false);
+            UIManager.put("ScrollBar.width", 10);
+            UIManager.put("TabbedPane.showTabSeparators", true);
+            UIManager.put("TabbedPane.tabHeight", 30);
+            UIManager.put("Button.arc", 6);
+            UIManager.put("Component.arc", 6);
+            UIManager.put("ProgressBar.arc", 6);
+        } catch (Throwable t) {
             try {
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             } catch (Exception ignored) {
-                // dùng giao diện mặc định
             }
-            new MainUI().setVisible(true);
-        });
+        }
     }
 }

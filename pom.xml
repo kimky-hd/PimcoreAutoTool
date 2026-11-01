@@ -29,6 +29,18 @@
             <version>1.18.1</version>
         </dependency>
 
+        <!-- Giao diện phong cách IntelliJ IDEA (FlatLaf Darcula) -->
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf</artifactId>
+            <version>3.5.4</version>
+        </dependency>
+        <dependency>
+            <groupId>com.formdev</groupId>
+            <artifactId>flatlaf-intellij-themes</artifactId>
+            <version>3.5.4</version>
+        </dependency>
+
         <!-- JUnit 5 cho Unit Test -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>

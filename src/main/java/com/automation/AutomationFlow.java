@@ -102,9 +102,11 @@ public class AutomationFlow implements Runnable {
     private String currentDocUrl;
     private String docId;
     private String articleTitle;
+    private String docTabHandle; // Giữ tab Google Doc của bài viết hiện tại để tái sử dụng ngay ở Bước 21
     private String sourceHtml;
     private String cleanHtml;
     private int completedArticles;
+    private final java.util.List<String> failedArticles = new java.util.ArrayList<>();
 
     public AutomationFlow(RunConfig config, Selectors selectors, FlowListener listener) {
         this.config = config;
@@ -161,28 +163,56 @@ public class AutomationFlow implements Runnable {
                         + " --------------------");
                 log("Link Google Doc: " + currentDocUrl);
 
-                runArticle();
-
-                completedArticles++;
-                log("==> HOÀN THÀNH BÀI " + (articleIndex + 1) + ": \"" + articleTitle + "\"");
+                try {
+                    runArticle();
+                    completedArticles++;
+                    log("==> HOÀN THÀNH BÀI " + (articleIndex + 1) + ": \"" + articleTitle + "\"");
+                } catch (AutomationStoppedException e) {
+                    throw e;
+                } catch (StepFailedException e) {
+                    if (control.isStopRequested()) {
+                        throw new AutomationStoppedException();
+                    }
+                    String errItem = "Bài " + (articleIndex + 1) + " (Bước " + e.getStep() + ": " + e.getMessage() + ")";
+                    failedArticles.add(errItem);
+                    log("==> [BỎ QUA BÀI LỖI] " + errItem);
+                    if (articleIndex < config.articleCount() - 1) {
+                        log("    Đang dọn dẹp trạng thái trình duyệt để tiếp tục chạy Bài " + (articleIndex + 2) + "...");
+                        recoverBrowserStateAfterArticleError();
+                    }
+                } catch (Exception e) {
+                    if (control.isStopRequested()) {
+                        throw new AutomationStoppedException();
+                    }
+                    String errItem = "Bài " + (articleIndex + 1) + " (" + BrowserHelper.shortMessage(e) + ")";
+                    failedArticles.add(errItem);
+                    log("==> [BỎ QUA BÀI LỖI] " + errItem);
+                    if (articleIndex < config.articleCount() - 1) {
+                        log("    Đang dọn dẹp trạng thái trình duyệt để tiếp tục chạy Bài " + (articleIndex + 2) + "...");
+                        recoverBrowserStateAfterArticleError();
+                    }
+                }
 
                 // Nghỉ nhẹ giữa các bài
                 if (articleIndex < config.articleCount() - 1) {
                     control.sleep(sel.getInt("timing.betweenArticlesMs", 2000));
                 }
             }
-            success = true;
-            summary = "Hoàn thành toàn bộ " + completedArticles + "/" + config.articleCount() + " bài viết.";
+            if (failedArticles.isEmpty()) {
+                success = true;
+                summary = "Hoàn thành toàn bộ " + completedArticles + "/" + config.articleCount() + " bài viết.";
+            } else {
+                success = completedArticles > 0;
+                summary = "Hoàn thành " + completedArticles + "/" + config.articleCount()
+                        + " bài. Thất bại " + failedArticles.size() + " bài: " + String.join(" | ", failedArticles);
+            }
         } catch (AutomationStoppedException e) {
             summary = "ĐÃ DỪNG theo yêu cầu. Hoàn thành " + completedArticles + "/" + config.articleCount() + " bài.";
-        } catch (StepFailedException e) {
-            summary = "DỪNG DO LỖI ở Bước " + e.getStep() + ". Hoàn thành " + completedArticles + "/"
-                    + config.articleCount() + " bài. Chi tiết: " + e.getMessage();
         } catch (Exception e) {
             if (control.isStopRequested()) {
                 summary = "ĐÃ DỪNG theo yêu cầu. Hoàn thành " + completedArticles + "/" + config.articleCount() + " bài.";
             } else {
-                summary = "LỖI: " + BrowserHelper.shortMessage(e);
+                summary = "LỖI KẾT NỐI: " + BrowserHelper.shortMessage(e);
             }
         } finally {
             Thread.interrupted();
@@ -190,6 +220,31 @@ public class AutomationFlow implements Runnable {
         }
         log("==================== KẾT THÚC: " + summary);
         listener.onFinished(success, summary);
+    }
+
+    /** Dọn dẹp tab Google Doc dư thừa hoặc frame bị kẹt khi 1 bài bị lỗi giữa chừng để bài tiếp theo chạy sạch. */
+    private void recoverBrowserStateAfterArticleError() {
+        try {
+            driver.switchTo().defaultContent();
+        } catch (Exception ignored) {
+        }
+        try {
+            if (docId != null && !docId.isBlank()) {
+                for (String handle : driver.getWindowHandles()) {
+                    try {
+                        driver.switchTo().window(handle);
+                        if (driver.getCurrentUrl().contains(docId)) {
+                            driver.close();
+                            log("    Đã đóng tab Google Doc của bài lỗi.");
+                            break;
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+            switchToPimcore();
+        } catch (Exception ignored) {
+        }
     }
 
     private void connect() {
@@ -227,6 +282,7 @@ public class AutomationFlow implements Runnable {
         currentDocUrl = null;
         docId = null;
         articleTitle = null;
+        docTabHandle = null;
         sourceHtml = null;
         cleanHtml = null;
     }
@@ -249,6 +305,7 @@ public class AutomationFlow implements Runnable {
             log("   Doc ID: " + docId);
             log("   Mở tab Google Doc mới trên Chrome...");
             driver.switchTo().newWindow(WindowType.TAB);
+            docTabHandle = driver.getWindowHandle();
             driver.get(currentDocUrl);
             ui.waitUrlContains("/document/", pageLoadTimeout);
             ui.waitPageReady(pageLoadTimeout);
@@ -256,7 +313,7 @@ public class AutomationFlow implements Runnable {
             log("   Đã tải xong tab Google Doc: " + driver.getTitle());
         });
 
-        step(2, "Copy tiêu đề bôi đậm đầu tiên & Đóng ngay tab Doc giải phóng RAM", () -> {
+        step(2, "Copy tiêu đề bôi đậm đầu tiên & Chuyển sang Pimcore", () -> {
             articleTitle = readFirstBoldTitle();
             if (articleTitle == null || articleTitle.isBlank()) {
                 throw new IllegalStateException("Không tìm thấy dòng chữ bôi đậm nào trong bài viết");
@@ -264,12 +321,17 @@ public class AutomationFlow implements Runnable {
             ClipboardUtil.setText(articleTitle);
             log("   articleTitle = \"" + articleTitle + "\" (đã đưa vào Clipboard)");
 
-            // Đóng ngay tab Google Doc để giải phóng RAM cho Chrome khi chạy nhiều bài
-            try {
-                driver.close();
-                log("   Đã đóng tab Google Doc để giải phóng bộ nhớ RAM.");
-            } catch (WebDriverException e) {
-                log("   (Tab Doc đã đóng trước đó)");
+            // Tối ưu hóa: Nếu KHÔNG bật tùy chọn tạo thẻ HTML trong Google Doc, đóng ngay để tiết kiệm RAM.
+            // Nếu CÓ bật tùy chọn tạo thẻ HTML, giữ tab mở ngầm để Bước 21 dán tức thì không cần load lại Doc.
+            if (!config.saveHtmlToDocTab()) {
+                try {
+                    driver.close();
+                    docTabHandle = null;
+                    log("   Đã đóng tab Google Doc để giải phóng bộ nhớ RAM.");
+                } catch (WebDriverException ignored) {
+                }
+            } else {
+                log("   Giữ tab Google Doc mở ngầm để lát nữa cập nhật thẻ HTML (tiết kiệm thời gian tải lại).");
             }
 
             // Chuyển lại ngay về tab Pimcore
@@ -297,8 +359,9 @@ public class AutomationFlow implements Runnable {
                 WebElement keyInput = ui.tryWaitVisible("pimcore.addObject.promptInput",
                         sel.getInt("timing.promptWaitSec", 5));
                 if (keyInput != null) {
-                    log("   Pimcore hỏi tên object -> dán tiêu đề bài làm tên");
-                    ui.pasteText(keyInput, articleTitle, true, mode);
+                    String safeKey = sanitizeObjectKey(articleTitle, docId);
+                    log("   Pimcore hỏi tên object -> dán tên đã lọc ký tự đặc biệt: \"" + safeKey + "\"");
+                    ui.pasteText(keyInput, safeKey, true, mode);
                     control.sleep(300);
                     ui.clickKey("pimcore.addObject.promptOk");
                     log("   Đã bấm OK");
@@ -352,15 +415,44 @@ public class AutomationFlow implements Runnable {
             ui.pasteText(idInput, docId, true, mode);
         });
 
-        step(16, "Ấn nút \"Gửi\" và chờ " + config.syncWaitSeconds() + " giây", () -> {
+        step(16, "Ấn nút \"Gửi\" & Tự động thăm dò đồng bộ (Dynamic Polling)", () -> {
             ui.clickKeyInAnyFrame("pimcore.syncSendButton");
-            log("   Đã bấm \"Gửi\". Bắt đầu chờ hệ thống nhập dữ liệu bài viết...");
-            for (int s = config.syncWaitSeconds(); s >= 1; s--) {
-                log("   [CHỜ] Còn " + s + " giây...");
-                listener.onStatus("Bài " + (articleIndex + 1) + " - Bước 16: đang chờ Sync, còn " + s + " giây");
-                control.sleep(1000);
+            log("   Đã bấm \"Gửi\". Bắt đầu tự động kiểm tra đồng bộ dữ liệu (không cần đợi cứng)...");
+            driver.switchTo().defaultContent();
+
+            // Chờ tối thiểu 4 giây đầu tiên để Pimcore bắt đầu gửi request đồng bộ
+            control.sleep(4000);
+
+            // Tự động thăm dò nội dung bài viết hoặc Source: nếu Pimcore tải xong sớm là đi tiếp ngay lập tức
+            int maxCheckSeconds = Math.max(config.syncWaitSeconds(), 25);
+            boolean syncReady = false;
+            long deadline = System.currentTimeMillis() + (maxCheckSeconds * 1000L);
+
+            while (System.currentTimeMillis() < deadline) {
+                control.checkpoint();
+                try {
+                    // Kiểm tra khung soạn thảo bài viết xem đã có nội dung chữ hoặc ảnh đổ vào chưa
+                    WebElement body = ui.tryWaitVisibleInAnyFrame("pimcore.articleBody", 1);
+                    if (body != null) {
+                        String text = body.getText().trim();
+                        int imgTags = body.findElements(org.openqa.selenium.By.tagName("img")).size();
+                        if (text.length() > 20 || imgTags > 0) {
+                            log("   [ĐỒNG BỘ XONG SỚM] Phát hiện Pimcore đã nhận dữ liệu (" + text.length() + " ký tự, "
+                                    + imgTags + " ảnh) -> Đi tiếp ngay!");
+                            syncReady = true;
+                            break;
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+                long remain = Math.max(0, (deadline - System.currentTimeMillis()) / 1000);
+                listener.onStatus("Bài " + (articleIndex + 1) + " - Đang chờ Sync (còn tối đa " + remain + "s)...");
+                control.sleep(1500);
             }
-            log("   Hết thời gian chờ Sync.");
+
+            if (!syncReady) {
+                log("   Hết thời gian thăm dò Sync (" + maxCheckSeconds + "s), chuyển sang kiểm tra ô Source.");
+            }
             driver.switchTo().defaultContent();
         });
 
@@ -378,9 +470,38 @@ public class AutomationFlow implements Runnable {
 
         step(19, "Lấy toàn bộ mã HTML trong ô Source & Đóng tab Object Pimcore", () -> {
             WebElement sourceBox = ui.waitVisibleInAnyFrame("pimcore.sourceTextarea");
-            sourceHtml = ui.copyAllFrom(sourceBox);
+            try {
+                sourceHtml = ui.copyAllFrom(sourceBox);
+            } catch (Exception ignored) {
+                sourceHtml = "";
+            }
+
+            // Cơ chế Smart Polling: nếu bài viết nặng (nhiều ảnh) khiến Pimcore chưa kịp đổ HTML ra sau 25s,
+            // tự động đóng Source chờ thêm tối đa 6 lần x 5s = 30s rồi mở lại đọc.
+            int maxRetries = 6;
+            for (int retry = 1; (sourceHtml == null || sourceHtml.isBlank()) && retry <= maxRetries; retry++) {
+                log("   [CHỜ THÊM SYNC - Lần " + retry + "/" + maxRetries
+                        + "] Ô Source chưa có dữ liệu -> đóng Source chờ thêm 5 giây để Pimcore tải nốt bài/ảnh...");
+                listener.onStatus("Bài " + (articleIndex + 1) + " - Bước 19: Chờ thêm Sync (" + retry + "/" + maxRetries + ")...");
+                try {
+                    driver.switchTo().defaultContent();
+                    ui.clickKeyInAnyFrame("pimcore.sourceButton");
+                } catch (Exception ignored) {
+                }
+                control.sleep(5000);
+                driver.switchTo().defaultContent();
+                ui.clickKeyInAnyFrame("pimcore.sourceButton");
+                control.sleep(800);
+                sourceBox = ui.waitVisibleInAnyFrame("pimcore.sourceTextarea");
+                try {
+                    sourceHtml = ui.copyAllFrom(sourceBox);
+                } catch (Exception ignored) {
+                    sourceHtml = "";
+                }
+            }
+
             if (sourceHtml == null || sourceHtml.isBlank()) {
-                throw new IllegalStateException("Ô Source rỗng - có thể Sync chưa nhập xong dữ liệu");
+                throw new IllegalStateException("Ô Source vẫn rỗng sau khi đã chờ thêm 30 giây - vui lòng kiểm tra lại ID Google Doc hoặc quyền truy cập file Doc");
             }
             log("   Đã lấy " + sourceHtml.length() + " ký tự HTML thô.");
 
@@ -408,6 +529,10 @@ public class AutomationFlow implements Runnable {
             cleanHtml = HtmlTemplateFormatter.formatCleanTemplate(sourceHtml);
             if (cleanHtml.isBlank()) {
                 throw new IllegalStateException("Kết quả chuẩn hóa HTML bị rỗng");
+            }
+
+            for (String statLine : HtmlTemplateFormatter.inspectHtmlStatsAndWarnings(cleanHtml)) {
+                log("   " + statLine);
             }
 
             ClipboardUtil.setText(cleanHtml);
@@ -485,31 +610,39 @@ public class AutomationFlow implements Runnable {
         });
     }
 
-    /** Mở Google Doc, tạo hoặc chọn thẻ 'html' và paste nội dung HTML chuẩn hóa vào. */
+    /** Mở hoặc kích hoạt lại Google Doc, tạo hoặc chọn thẻ 'html' và paste nội dung HTML chuẩn hóa vào. */
     private void saveHtmlToGoogleDocTab(String docUrl, String cleanHtml) {
         String existingHandle = null;
-        for (String handle : driver.getWindowHandles()) {
-            try {
-                driver.switchTo().window(handle);
-                if (driver.getCurrentUrl().contains(docId)) {
-                    existingHandle = handle;
-                    break;
+
+        // Ưu tiên 1: Dùng ngay tab Google Doc đã mở từ Bước 1 (không cần load lại từ đầu, tiết kiệm 5-8 giây)
+        if (docTabHandle != null && ui.handleExists(docTabHandle)) {
+            existingHandle = docTabHandle;
+            ui.activate(existingHandle);
+            log("   [TỐI ƯU TỐC ĐỘ] Kích hoạt ngay tab Google Doc có sẵn: " + driver.getTitle());
+        } else {
+            // Ưu tiên 2: Tìm trong danh sách window handles
+            for (String handle : driver.getWindowHandles()) {
+                try {
+                    driver.switchTo().window(handle);
+                    if (driver.getCurrentUrl().contains(docId)) {
+                        existingHandle = handle;
+                        break;
+                    }
+                } catch (Exception ignored) {
                 }
-            } catch (Exception ignored) {
+            }
+            if (existingHandle != null) {
+                ui.activate(existingHandle);
+                log("   Kích hoạt tab Google Doc hiện có: " + driver.getTitle());
+            } else {
+                log("   Mở lại Google Doc trên tab mới: " + docUrl);
+                driver.switchTo().newWindow(WindowType.TAB);
+                existingHandle = driver.getWindowHandle();
+                driver.get(docUrl);
+                ui.waitVisible("doc.readyIndicator");
             }
         }
-
-        if (existingHandle != null) {
-            ui.activate(existingHandle);
-            log("   Kích hoạt tab Google Doc hiện có: " + driver.getTitle());
-        } else {
-            log("   Mở lại Google Doc trên tab mới: " + docUrl);
-            driver.switchTo().newWindow(WindowType.TAB);
-            existingHandle = driver.getWindowHandle();
-            driver.get(docUrl);
-        }
-        ui.waitVisible("doc.readyIndicator");
-        control.sleep(1500); // Chờ Google Docs ổn định DOM
+        control.sleep(800); // Chờ Google Docs ổn định DOM
 
         // 1. Kiểm tra xem sidebar Thẻ và đường viền có đang mở không
         List<WebElement> addBtns = driver.findElements(sel.by("doc.addTabBtn"));
@@ -765,6 +898,27 @@ public class AutomationFlow implements Runnable {
         }
         String id = extract(DOC_ID_EDIT, url);
         return id != null ? id : extract(DOC_ID_ANY, url);
+    }
+
+    /**
+     * Làm sạch tên Object Key khi tạo bài mới trên Pimcore (loại bỏ các ký tự cấm như ?, /, :, *, ", <, >, |, #, %, &)
+     * để Pimcore không báo lỗi tạo Object. (Các trường Tiêu đề và SEO Title bên trong vẫn giữ nguyên bản gốc).
+     */
+    public static String sanitizeObjectKey(String rawTitle, String docId) {
+        String key = cleanText(rawTitle);
+        // Thay thế các ký tự cấm trong URL / Pimcore Object Key bằng khoảng trắng hoặc gạch ngang
+        key = key.replaceAll("[/?*:;\\\\\"<>|#%&+~`^\\[\\]{}()!@$=,]", " ");
+        key = key.replaceAll("\\s+", " ").trim();
+        // Xóa dấu chấm hoặc gạch ngang ở đầu/cuối
+        key = key.replaceAll("^[.\\-\\s]+|[.\\-\\s]+$", "");
+        if (key.length() > 110) {
+            key = key.substring(0, 110).trim();
+        }
+        if (key.isEmpty()) {
+            String suffix = (docId != null && docId.length() >= 6) ? docId.substring(0, 6) : String.valueOf(System.currentTimeMillis() % 100000);
+            key = "bai-viet-" + suffix;
+        }
+        return key;
     }
 
     private static String extract(Pattern pattern, String text) {
